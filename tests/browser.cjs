@@ -18,7 +18,10 @@ const worker = vm.createContext({ console, structuredClone, URL, AbortSignal, cr
   chrome: { runtime: { id: 'test', onMessage: { addListener: fn => { messageHandler = fn; } } }, action: { onClicked: { addListener() {} } }, tabs: { create() {} }, storage: { local: { get, set } } },
   fetch: async url => {
     if (networkFails) throw new Error('offline');
-    return { ok: true, json: async () => ({ code: 0, data: url.includes('/card?') ? { card: { name: '真实账号名', face: 'https://i0.hdslb.com/avatar.png' } } : { bvid: 'BV1GJ411x7h7', aid: 1234, title: '测试多 P 课程', pic: 'https://i0.hdslb.com/cover.png', pages: Array(5).fill({}) } }) };
+    return { ok: true, json: async () => ({ code: 0, data: url.includes('/card?') ? { card: { name: '真实账号名', face: 'https://i0.hdslb.com/avatar.png' } } : url.includes('/pugv/view/web/season?') ? {
+      season_id: 4372, title: '测试课堂课程', cover: 'http://i0.hdslb.com/cheese.jpg', ep_count: 2,
+      episodes: [{ id: 172445, index: 1 }, { id: 172532, index: 2 }]
+    } : { bvid: 'BV1GJ411x7h7', aid: 1234, title: '测试多 P 课程', pic: 'https://i0.hdslb.com/cover.png', pages: Array(5).fill({}) } }) };
   }
 });
 worker.importScripts = (...files) => files.forEach(file => vm.runInContext(fs.readFileSync(path.resolve(root, 'src/background', file), 'utf8'), worker));
@@ -26,7 +29,7 @@ vm.runInContext(fs.readFileSync(path.join(root, manifest.background.service_work
 const send = message => new Promise(resolve => messageHandler(message, { id: 'test' }, resolve));
 const header = `<div class="bili-header"><div class="bili-header__bar"><div class="left-entry"><div class="left-entry-main"><a class="home-page-entry" href="https://www.bilibili.com/">首页</a></div></div><div class="center-search-container"><form id="nav-searchform"><input class="nav-search-input"><button class="nav-search-btn">搜索</button></form></div><div class="right-entry"><div class="right-entry__main"><div class="header-avatar-wrap"><a class="avatar-trigger" href="https://space.bilibili.com/999">头像</a><div class="v-popover-content"><div class="avatar-panel" style="width:320px;padding:40px;transform:translateX(60px);background:red"><a class="nickname" href="https://space.bilibili.com/999">我的昵称</a><div class="stats">数据与硬币</div><div class="recommend-services">推荐服务</div><button class="logout" onclick="window.logoutClicked=true">退出登录</button></div></div></div></div></div></div></div>`;
 function fixture(url) {
-  const searching = url.includes('search.bilibili.com'); const teacher = url.includes('space.bilibili.com'); const video = url.includes('/video/');
+  const searching = url.includes('search.bilibili.com'); const teacher = url.includes('space.bilibili.com'); const video = url.includes('/video/') || url.includes('/cheese/play/');
   return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;font:14px sans-serif}.bili-header__bar{height:64px;padding:0 32px;box-sizing:border-box;display:flex;justify-content:space-between}#nav-searchform{display:flex}input{min-width:0;flex:1}.header-avatar-wrap{position:relative}.avatar-trigger{display:block;width:36px;height:36px}.header-avatar-wrap:hover .avatar-trigger{transform:scale(2) translateY(18px)}.v-popover-content{display:none;position:absolute;top:100%;right:0;width:240px;background:white;box-shadow:0 3px 15px #ccc}.header-avatar-wrap:hover .v-popover-content{display:block}.upinfo{margin:24px}.upinfo-avatar img{width:64px;height:64px}.nickname{display:block}.bili-feed4-layout{height:400px}</style></head><body>${header}${searching ? '<div class=search-tabs>视频 / 用户</div><div class=video-list><article class=bili-video-card style="--text:#18191c"><h3 class=bili-video-card__info--tit>视频结果</h3></article></div>' : teacher ? '<div class="upinfo header-upinfo"><div class="upinfo-avatar"><img src="https://i0.hdslb.com/avatar.png"></div><div class="upinfo-detail"><div class="nickname">页面老师名</div></div><div class="operations">关注 / 举报 / 加入黑名单</div></div>' : video ? '<video></video>' : '<div class="bili-feed4-layout">推荐流</div>'}</body></html>`;
 }
 async function open(url) {
@@ -103,6 +106,21 @@ async function main() {
   assert.equal(await page.locator('.study-teacher').count(), 1); assert.equal(await page.locator('.study-course').count(), 1);
   networkFails = true;
   await page.getByRole('button', { name: '添加课程', exact: true }).click(); await page.getByLabel('课程链接', { exact: true }).fill('https://www.bilibili.com/video/BV1GJ411x7h7/'); await page.getByLabel('分类', { exact: true }).selectOption('default'); await page.getByRole('button', { name: '确认收藏', exact: true }).click(); await page.waitForFunction(() => document.querySelector('.study-form-error')?.textContent.length > 0); assert.equal(await page.locator('.study-course').count(), 1); await page.getByRole('button', { name: '取消', exact: true }).click();
+  networkFails = false;
+  await page.getByRole('button', { name: '添加课程', exact: true }).click();
+  await page.getByLabel('课程链接', { exact: true }).fill('https://www.bilibili.com/cheese/play/ep172532');
+  await page.getByLabel('分类', { exact: true }).selectOption('default');
+  await page.getByRole('button', { name: '确认收藏', exact: true }).click();
+  const classroomCard = page.locator('.study-course').filter({ hasText: '测试课堂课程' });
+  await classroomCard.waitFor();
+  assert.match(await classroomCard.locator('.study-card-detail').innerText(), /共 2 课/);
+  assert.equal(await classroomCard.locator('a').getAttribute('href'), 'https://www.bilibili.com/cheese/play/ep172532');
+  const classroomPage = await open('https://www.bilibili.com/cheese/play/ep172532');
+  await classroomPage.waitForFunction(() => document.documentElement.dataset.studyPage === 'cheese');
+  assert.equal(classroomPage.url(), 'https://www.bilibili.com/cheese/play/ep172532');
+  await classroomPage.evaluate(() => { const video = document.querySelector('video'); Object.defineProperties(video, { paused: { value: false }, currentTime: { value: 3 } }); video.dispatchEvent(new Event('timeupdate')); });
+  await page.waitForFunction(() => document.querySelector('.study-course:last-of-type .study-card-detail')?.textContent.includes('第 2 课'));
+  assert.match(await classroomCard.locator('.study-card-detail').innerText(), /上次看到第 2 课/);
   await page.setViewportSize({ width: 760, height: 900 });
   const account = await page.locator('.study-account-inline').boundingBox(); assert.ok(account.x >= 0 && account.x + account.width <= 760);
   assert.ok(await videoPage.locator('.study-home-entry').isVisible()); assert.ok(await teacherPage.locator('.study-home-entry').isVisible());
@@ -136,7 +154,7 @@ async function main() {
   assert.equal(searchPage.url(), 'https://www.bilibili.com/');
   await searchPage.locator('.study-home-entry').click();
   await searchPage.waitForTimeout(1200);
-  assert.equal(homeLoads, 4, 'clicking from home also finishes after one additional reload');
+  assert.equal(homeLoads, 3, 'clicking from home causes one reload');
   assert.equal(searchPage.url(), 'https://www.bilibili.com/');
   const trackedHome = await open('https://www.bilibili.com/?spm_id_from=333.337.0.0');
   await trackedHome.waitForURL('https://www.bilibili.com/');

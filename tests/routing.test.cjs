@@ -10,6 +10,9 @@ test('only course, teacher and account search routes survive', () => {
   assert.equal(Study.route('https://www.bilibili.com/video/BV1test?p=2'), 'video');
   assert.equal(Study.route('https://space.bilibili.com/123'), 'teacher');
   assert.equal(Study.route('https://search.bilibili.com/all?keyword=math'), 'search');
+  assert.equal(Study.route('https://www.bilibili.com/cheese/play/ep172445'), 'cheese');
+  assert.equal(Study.route('https://www.bilibili.com/cheese/play/ss4372'), 'cheese');
+  assert.equal(Study.route('https://www.bilibili.com/cheese/'), 'cheese');
   for (const path of ['/', '/v/popular/all', '/v/dynamic', '/bangumi/play/ep123']) assert.equal(Study.route(`https://www.bilibili.com${path}`), 'home');
 });
 test('search preserves input as a query parameter, in video search', () => {

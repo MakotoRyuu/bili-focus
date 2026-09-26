@@ -30,7 +30,35 @@ async function metadata(message) {
   }
   if (message.kind !== 'course') throw new Error('无效的资料类型。');
   const parsed = Library.courseUrl(message.url);
-  if (!parsed) throw new Error('请输入完整的 B站 BV / av 视频链接，不支持短链接或番剧链接。');
+  if (!parsed) throw new Error('请输入完整的 B站 BV / av 或课堂视频链接，不支持短链接或番剧链接。');
+  if (parsed.kind === 'cheese') {
+    const query = parsed.episodeId ? `ep_id=${parsed.episodeId}` : `season_id=${parsed.seasonId}`;
+    const data = await json(`https://api.bilibili.com/pugv/view/web/season?${query}`);
+    const episodes = Array.isArray(data.episodes) ? data.episodes : [];
+    let first = episodes.find(episode => Number(episode.index) === 1);
+    let selected = parsed.episodeId
+      ? episodes.find(episode => String(episode.id) === parsed.episodeId)
+      : first;
+    // Large courses can return only one page of lessons with the season summary.
+    if (data.season_id && (!first || !selected)) {
+      const pages = Math.max(1, Math.ceil((Number(data.ep_count) || episodes.length) / 100));
+      for (let page = 1; page <= pages && (!first || !selected); page++) {
+        const list = await json(`https://api.bilibili.com/pugv/view/web/ep/list?season_id=${data.season_id}&pn=${page}&ps=100`);
+        const items = Array.isArray(list.items) ? list.items : [];
+        if (!first) first = items.find(episode => Number(episode.index) === 1) || (page === 1 ? items[0] : null);
+        if (!selected) selected = parsed.episodeId
+          ? items.find(episode => String(episode.id) === parsed.episodeId)
+          : first;
+      }
+    }
+    if (!data.season_id || !first?.id || !selected?.id) throw new Error('暂时无法获取该课堂课程的课时资料。');
+    return {
+      id: `ss${data.season_id}`, name: String(data.title || ''), cover: Library.imageUrl(data.cover),
+      pageCount: Math.max(1, Number(data.ep_count) || episodes.length),
+      firstEpisodeId: String(first.id), startEpisodeId: String(selected.id),
+      episodeId: String(selected.id), page: Number(selected.index) || 1
+    };
+  }
   const query = parsed.id.startsWith('BV') ? `bvid=${parsed.id}` : `aid=${parsed.id.slice(2)}`;
   const data = await json(`https://api.bilibili.com/x/web-interface/view?${query}`);
   return { id: data.bvid, aid: data.aid, name: data.title, cover: Library.imageUrl(data.pic), pageCount: Math.max(1, data.pages?.length || data.videos || 1) };

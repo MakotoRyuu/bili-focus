@@ -16,6 +16,9 @@ html[data-study-page=teacher] .upinfo :is(.space-head-follow,.message-btn,.more-
 html[data-study-page=teacher] .h-action > :not(#study-save-teacher){display:none!important}
 html[data-study-page=video] :is(#comment,#commentapp,.comment-container,.reply-box,.recommend-list-v1,.recommend-list,.rec-list,.video-page-special-card-small,.video-page-game-card-small,.video-page-operator-card-small,.ad-report,.video-toolbar-container,.video-toolbar,.video-tag-container,.tag-container,.video-note,.activity-m-v1,.members-info,.danmaku-box,.bpx-player-dm-wrap,.bpx-player-dm-mask-wrap,.bpx-player-dm-switch,.bpx-player-dm-setting,.bpx-player-sending-area,.bpx-player-ending-related,.bpx-player-ending-recommend,.bpx-player-ending-panel,.bilibili-player-video-danmaku,.bilibili-player-video-sendbar){display:none!important}
 html[data-study-page=video] :is(.bpx-player-row-dm-wrap,.bpx-player-dm-container){visibility:hidden!important;pointer-events:none!important}
+/* Keep the classroom player, lesson list and overview; remove social panels. */
+html[data-study-page=cheese] :is(.archive-comment-box,.comment-tab,.player-danmaku,.season-recommends,.share,.bpx-player-dm-wrap,.bpx-player-dm-switch,.bpx-player-dm-setting,.bpx-player-sending-area){display:none!important}
+html[data-study-page=cheese] :is(.bpx-player-row-dm-wrap,.bpx-player-dm-container){visibility:hidden!important;pointer-events:none!important}
 
 /* Current native header: keep its home entry and avatar, remove entertainment shortcuts. */
 html[data-study-page] .left-entry-main > :not(.home-page-entry),

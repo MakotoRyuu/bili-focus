@@ -40,10 +40,24 @@ test('re-saving a course preserves watched P; av progress updates the canonical 
 });
 test('course URLs and artwork reject lookalike hosts, scripts and invalid IDs', () => {
   assert.equal(Library.courseUrl('https://www.bilibili.com/video/BV1GJ411x7h7/?p=3').page, 3);
+  assert.deepEqual(Library.courseUrl('https://www.bilibili.com/cheese/play/ep172445?spm_id_from=test'), {
+    kind: 'cheese', id: 'ep172445', episodeId: '172445', seasonId: null,
+    url: 'https://www.bilibili.com/cheese/play/ep172445'
+  });
+  assert.equal(Library.courseUrl('https://www.bilibili.com/cheese/play/ss4372').seasonId, '4372');
   assert.equal(Library.courseUrl('https://bilibili.com/video/av123/?p=-1').page, 1);
-  for (const value of ['https://www.bilibili.com.evil.test/video/av123','javascript:alert(1)','https://b23.tv/abc','https://www.bilibili.com/video/BVbad']) assert.equal(Library.courseUrl(value), null);
+  for (const value of ['https://www.bilibili.com.evil.test/video/av123','javascript:alert(1)','https://b23.tv/abc','https://www.bilibili.com/video/BVbad','https://www.bilibili.com/cheese/play/ep0','https://www.bilibili.com/cheese/play/ep12wrong']) assert.equal(Library.courseUrl(value), null);
   assert.equal(Library.imageUrl('//i0.hdslb.com/bfs/face/abc.jpg'), 'https://i0.hdslb.com/bfs/face/abc.jpg');
   assert.equal(Library.imageUrl('https://hdslb.com.evil.test/img.png'), '');
+});
+test('classroom courses keep episode progress and reopen the watched lesson', () => {
+  let state = Library.normalize();
+  const item = { id: 'ss4372', name: '清史', categoryId: 'default', pageCount: 21, firstEpisodeId: '172445', startEpisodeId: '172532' };
+  state = add(state, { type: 'item.save', kind: 'course', item });
+  state = add(state, { type: 'course.progress', kind: 'course', id: item.id, page: 2, episodeId: '172532' });
+  state = add(state, { type: 'item.save', kind: 'course', item });
+  assert.equal(state.courses[0].lastPage, 2);
+  assert.equal(state.courses[0].lastEpisodeId, '172532');
 });
 test('teacher toggle removal and re-add do not create duplicates', () => {
   let state = Library.normalize(); const item = { id: '123', name: '昵称', categoryId: 'default' };

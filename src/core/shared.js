@@ -12,6 +12,7 @@
     const url = new URL(value);
     if (url.hostname === 'search.bilibili.com') return 'search';
     if (url.hostname === 'space.bilibili.com' && /^\/[1-9]\d*(?:\/|$)/.test(url.pathname)) return 'teacher';
+    if (url.hostname === 'www.bilibili.com' && /^\/cheese(?:\/|$)/.test(url.pathname)) return 'cheese';
     if (url.hostname === 'www.bilibili.com' && /^\/video\/(?:BV[\w]+|av\d+)/i.test(url.pathname)) return 'video';
     return 'home';
   };

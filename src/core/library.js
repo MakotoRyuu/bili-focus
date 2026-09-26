@@ -12,10 +12,17 @@
     try {
       const url = new URL(String(value).trim());
       if (url.protocol !== 'https:' || !['www.bilibili.com', 'bilibili.com'].includes(url.hostname)) return null;
+      const cheese = url.pathname.match(/^\/cheese\/play\/(ep|ss)([1-9]\d*)(?:\/|$)/);
+      if (cheese) return {
+        kind: 'cheese', id: `${cheese[1]}${cheese[2]}`,
+        episodeId: cheese[1] === 'ep' ? cheese[2] : null,
+        seasonId: cheese[1] === 'ss' ? cheese[2] : null,
+        url: `https://www.bilibili.com/cheese/play/${cheese[1]}${cheese[2]}`
+      };
       const match = url.pathname.match(/^\/video\/(BV[0-9A-Za-z]{10}|av[1-9]\d*)(?:\/|$)/);
       if (!match) return null;
       const page = Number(url.searchParams.get('p') || 1);
-      return { id: match[1], page: Number.isSafeInteger(page) && page > 0 ? page : 1, url: `https://www.bilibili.com/video/${match[1]}/` };
+      return { kind: 'video', id: match[1], page: Number.isSafeInteger(page) && page > 0 ? page : 1, url: `https://www.bilibili.com/video/${match[1]}/` };
     } catch { return null; }
   }
   function normalize(raw = {}) {
@@ -54,13 +61,14 @@
       if (!item || !String(item.name || '').trim()) throw new Error('请填写名称。');
       if (!state[categories].some(category => category.id === item.categoryId)) throw new Error('请选择有效分类；分类可能已被其他标签页删除。');
       if (kind === 'teacher' && !/^[1-9]\d{0,19}$/.test(item.id)) throw new Error('老师 UID 无效。');
-      if (kind === 'course' && !courseUrl(`https://www.bilibili.com/video/${item.id}/`)) throw new Error('课程链接无效。');
+      if (kind === 'course' && !(/^(?:BV[0-9A-Za-z]{10}|av[1-9]\d*|ss[1-9]\d*)$/.test(item.id))) throw new Error('课程链接无效。');
       const previous = state[items].find(entry => entry.id === item.id || (kind === 'course' && item.aid && entry.aid === item.aid));
       const saved = { ...previous, ...item, name: item.name.trim().slice(0, 100) };
       if (kind === 'teacher') saved.avatar = imageUrl(item.avatar) || previous?.avatar || '';
       else {
         saved.cover = imageUrl(item.cover) || previous?.cover || '';
         saved.lastPage = previous?.lastPage || null;
+        saved.lastEpisodeId = previous?.lastEpisodeId || null;
         saved.pageCount = Math.max(1, Number(item.pageCount) || previous?.pageCount || 1);
       }
       state[items] = state[items].filter(entry => entry !== previous);
@@ -80,7 +88,10 @@
       if (item && imageUrl(action.avatar)) item.avatar = imageUrl(action.avatar);
     } else if (action.type === 'course.progress' && kind === 'course') {
       const item = state.courses.find(item => item.id === action.id || `av${item.aid}` === action.id);
-      if (item && Number.isSafeInteger(action.page) && action.page >= 1 && action.page <= item.pageCount) item.lastPage = action.page;
+      if (item && Number.isSafeInteger(action.page) && action.page >= 1 && action.page <= item.pageCount) {
+        item.lastPage = action.page;
+        if (/^ss[1-9]\d*$/.test(item.id) && /^[1-9]\d*$/.test(String(action.episodeId || ''))) item.lastEpisodeId = String(action.episodeId);
+      }
     } else throw new Error('不支持的操作。');
     return state;
   }

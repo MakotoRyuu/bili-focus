@@ -73,10 +73,10 @@
         form.append(body);
         function renderFields() {
           body.replaceChildren(); const isTeacher = kind === 'teacher';
-          url = el('input'); url.required = true; url.placeholder = isTeacher ? 'https://space.bilibili.com/… 或 UID' : 'https://www.bilibili.com/video/BV…';
+          url = el('input'); url.required = true; url.placeholder = isTeacher ? 'https://space.bilibili.com/… 或 UID' : 'BV / av 视频或课堂 ep / ss 链接';
           if (!teacher) field(body, isTeacher ? '主页链接或 UID' : '课程链接', url);
           name = el('input'); name.maxLength = isTeacher ? 40 : 100; name.required = isTeacher; name.value = teacher?.name || '';
-          field(body, isTeacher ? '昵称' : '课程名称（可选，默认使用视频标题）', name);
+          field(body, isTeacher ? '昵称' : '课程名称（可选，默认使用课程标题）', name);
           category = categoryField(body, kind);
           body.append(el('p', '可先在首页「添加分类」中创建新的分类。', 'study-help'));
         }
@@ -116,9 +116,13 @@
     }
     function card(kind, item) {
       const teacher = kind === 'teacher', node = el('article', '', `study-card study-${kind}`), link = el('a');
-      link.href = teacher ? `https://space.bilibili.com/${item.id}/upload/video` : `https://www.bilibili.com/video/${item.id}/?p=${item.lastPage || 1}`;
+      const classroom = !teacher && /^ss[1-9]\d*$/.test(item.id);
+      link.href = teacher ? `https://space.bilibili.com/${item.id}/upload/video`
+        : classroom ? `https://www.bilibili.com/cheese/play/ep${item.lastEpisodeId || item.startEpisodeId || item.firstEpisodeId}`
+          : `https://www.bilibili.com/video/${item.id}/?p=${item.lastPage || 1}`;
       link.append(image(teacher ? item.avatar : item.cover, teacher ? item.name.slice(0,1) : '封面暂不可用', teacher ? 'study-avatar' : 'study-cover'), el('span', item.name, 'study-card-name'));
-      const detail = teacher ? '查看投稿与合集' : item.pageCount > 1 ? (item.lastPage ? `上次看到第 ${item.lastPage} P · 共 ${item.pageCount} P` : `尚未开始 · 共 ${item.pageCount} P`) : '打开课程';
+      const unit = classroom ? '课' : 'P';
+      const detail = teacher ? '查看投稿与合集' : item.pageCount > 1 ? (item.lastPage ? `上次看到第 ${item.lastPage} ${unit} · 共 ${item.pageCount} ${unit}` : `尚未开始 · 共 ${item.pageCount} ${unit}`) : '打开课程';
       link.append(el('span', detail, 'study-card-detail'));
       const remove = button('移除', async () => { try { await mutate({ type: 'item.remove', kind, id: item.id }); } catch (e) { notice(e.message); } }, 'study-remove');
       const edit = button('⚙', () => editItem(kind, item), 'study-edit'); edit.setAttribute('aria-label', `编辑${labels[kind]} ${item.name}`); edit.title = '编辑名称和分类';

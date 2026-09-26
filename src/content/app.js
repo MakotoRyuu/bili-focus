@@ -4,6 +4,7 @@
   let palette = 'blue', appearance = 'system';
   const avatarAttempts = new Set();
   let lastProgress = '', progressBusy = false;
+  const skippedClassroomEpisodes = new Set();
   async function rpc(type, payload = {}) {
     const response = await chrome.runtime.sendMessage({ channel: 'bili-focus', type, ...payload });
     if (!response?.ok) throw new Error(response?.error || '插件连接已更新，请刷新页面后重试。');
@@ -85,9 +86,24 @@
   }
   function captureProgress() {
     const parsed = Library.courseUrl(location.href); if (!loaded || !parsed || progressBusy) return;
-    const saved = state.courses.find(item => item.id === parsed.id || `av${item.aid}` === parsed.id); if (!saved) return;
     const video = document.querySelector('video');
     if (!video || video.paused || video.currentTime < 1) return;
+    if (parsed.kind === 'cheese') {
+      if (!parsed.episodeId || !state.courses.some(item => /^ss[1-9]\d*$/.test(item.id))) return;
+      const key = `ep${parsed.episodeId}`;
+      if (lastProgress === key || skippedClassroomEpisodes.has(key)) return;
+      const currentUrl = location.href;
+      progressBusy = true;
+      rpc('metadata', { kind: 'course', url: currentUrl }).then(data => {
+        if (location.href !== currentUrl) return;
+        const saved = state.courses.find(item => item.id === data.id);
+        if (!saved) { skippedClassroomEpisodes.add(key); return; }
+        return mutate({ type: 'course.progress', kind: 'course', id: saved.id, page: data.page, episodeId: parsed.episodeId })
+          .then(() => { lastProgress = key; });
+      }).catch(e => { skippedClassroomEpisodes.add(key); FocusUI.notice(e.message); }).finally(() => { progressBusy = false; });
+      return;
+    }
+    const saved = state.courses.find(item => item.id === parsed.id || `av${item.aid}` === parsed.id); if (!saved) return;
     const key = `${saved.id}:${parsed.page}`;
     if (lastProgress === key) return;
     progressBusy = true;
@@ -112,7 +128,7 @@
     for (const input of document.querySelectorAll('.nav-search-input, #nav-searchform input, .search-input-el')) {
       if (input.placeholder !== '搜索视频 / UP 主') input.placeholder = '搜索视频 / UP 主'; input.removeAttribute('title');
     }
-    if (kind === 'video') captureProgress();
+    if (kind === 'video' || kind === 'cheese') captureProgress();
   }
   function search(event) {
     const target = event.target;
@@ -125,12 +141,12 @@
   }
   for (const type of ['submit','keydown','click']) document.addEventListener(type, search, true);
   document.addEventListener('keydown', event => {
-    if (Study.route(location.href) === 'video' && event.key.toLowerCase() === 'd' && !event.target.closest?.('input,textarea,[contenteditable=true]')) { event.preventDefault(); event.stopImmediatePropagation(); }
+    if (['video','cheese'].includes(Study.route(location.href)) && event.key.toLowerCase() === 'd' && !event.target.closest?.('input,textarea,[contenteditable=true]')) { event.preventDefault(); event.stopImmediatePropagation(); }
   }, true);
   document.addEventListener('timeupdate', captureProgress, true);
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
-    if (changes.library) { state = Library.normalize({ library: changes.library.newValue }); refresh(); }
+    if (changes.library) { state = Library.normalize({ library: changes.library.newValue }); skippedClassroomEpisodes.clear(); refresh(); }
     if (changes.palette) palette = changes.palette.newValue || 'blue';
     if (changes.theme) appearance = changes.theme.newValue || 'system';
     if (changes.palette || changes.theme) { applyAppearance(); refresh(); }
