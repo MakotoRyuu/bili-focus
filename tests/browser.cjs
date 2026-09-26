@@ -27,7 +27,7 @@ const send = message => new Promise(resolve => messageHandler(message, { id: 'te
 const header = `<div class="bili-header"><div class="bili-header__bar"><div class="left-entry"><div class="left-entry-main"><a class="home-page-entry" href="https://www.bilibili.com/">首页</a></div></div><div class="center-search-container"><form id="nav-searchform"><input class="nav-search-input"><button class="nav-search-btn">搜索</button></form></div><div class="right-entry"><div class="right-entry__main"><div class="header-avatar-wrap"><a class="avatar-trigger" href="https://space.bilibili.com/999">头像</a><div class="v-popover-content"><div class="avatar-panel" style="width:320px;padding:40px;transform:translateX(60px);background:red"><a class="nickname" href="https://space.bilibili.com/999">我的昵称</a><div class="stats">数据与硬币</div><div class="recommend-services">推荐服务</div><button class="logout" onclick="window.logoutClicked=true">退出登录</button></div></div></div></div></div></div></div>`;
 function fixture(url) {
   const searching = url.includes('search.bilibili.com'); const teacher = url.includes('space.bilibili.com'); const video = url.includes('/video/');
-  return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;font:14px sans-serif}.bili-header__bar{height:64px;padding:0 32px;box-sizing:border-box;display:flex;justify-content:space-between}#nav-searchform{display:flex}input{min-width:0;flex:1}.header-avatar-wrap{position:relative}.avatar-trigger{display:block;width:36px;height:36px}.header-avatar-wrap:hover .avatar-trigger{transform:scale(2) translateY(18px)}.v-popover-content{display:none;position:absolute;top:100%;right:0;width:240px;background:white;box-shadow:0 3px 15px #ccc}.header-avatar-wrap:hover .v-popover-content{display:block}.upinfo{margin:24px}.upinfo-avatar img{width:64px;height:64px}.nickname{display:block}.bili-feed4-layout{height:400px}</style></head><body>${header}${searching ? '<div class=search-tabs>视频 / 用户</div><div class=video-list><article class=bili-video-card>视频结果</article></div>' : teacher ? '<div class="upinfo header-upinfo"><div class="upinfo-avatar"><img src="https://i0.hdslb.com/avatar.png"></div><div class="upinfo-detail"><div class="nickname">页面老师名</div></div><div class="operations">关注 / 举报 / 加入黑名单</div></div>' : video ? '<video></video>' : '<div class="bili-feed4-layout">推荐流</div>'}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;font:14px sans-serif}.bili-header__bar{height:64px;padding:0 32px;box-sizing:border-box;display:flex;justify-content:space-between}#nav-searchform{display:flex}input{min-width:0;flex:1}.header-avatar-wrap{position:relative}.avatar-trigger{display:block;width:36px;height:36px}.header-avatar-wrap:hover .avatar-trigger{transform:scale(2) translateY(18px)}.v-popover-content{display:none;position:absolute;top:100%;right:0;width:240px;background:white;box-shadow:0 3px 15px #ccc}.header-avatar-wrap:hover .v-popover-content{display:block}.upinfo{margin:24px}.upinfo-avatar img{width:64px;height:64px}.nickname{display:block}.bili-feed4-layout{height:400px}</style></head><body>${header}${searching ? '<div class=search-tabs>视频 / 用户</div><div class=video-list><article class=bili-video-card style="--text:#18191c"><h3 class=bili-video-card__info--tit>视频结果</h3></article></div>' : teacher ? '<div class="upinfo header-upinfo"><div class="upinfo-avatar"><img src="https://i0.hdslb.com/avatar.png"></div><div class="upinfo-detail"><div class="nickname">页面老师名</div></div><div class="operations">关注 / 举报 / 加入黑名单</div></div>' : video ? '<video></video>' : '<div class="bili-feed4-layout">推荐流</div>'}</body></html>`;
 }
 async function open(url) {
   const page = await context.newPage(); await page.goto(url);
@@ -47,6 +47,13 @@ async function main() {
   const page = await open('https://www.bilibili.com/'); await page.locator('.study-home').waitFor();
   assert.equal(await page.locator('.study-teacher .study-card-name').innerText(), '原有昵称');
   assert.equal(await page.locator('#study-status').count(), 0);
+  for (const width of [1440, 2200, 760]) {
+    await page.setViewportSize({width,height:1000});
+    const icon = await page.locator('.study-home-entry').first().boundingBox();
+    const heading = await page.locator('.study-heading h2').first().boundingBox();
+    assert.ok(Math.abs(icon.x-heading.x)<1, `home alignment at ${width}: ${icon.x}/${heading.x}`);
+  }
+  await page.setViewportSize({width:1440,height:1000});
   const selects = await page.locator('.study-settings select').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().width)); assert.equal(selects[0], selects[1]);
   assert.deepEqual(await page.locator('[data-collection]').evaluateAll(nodes=>nodes.map(node=>node.dataset.collection)), ['course','teacher']);
   assert.equal(await page.locator('.study-home-entry svg').count(),1);
@@ -100,6 +107,11 @@ async function main() {
   const account = await page.locator('.study-account-inline').boundingBox(); assert.ok(account.x >= 0 && account.x + account.width <= 760);
   assert.ok(await videoPage.locator('.study-home-entry').isVisible()); assert.ok(await teacherPage.locator('.study-home-entry').isVisible());
   const searchPage = await open('https://search.bilibili.com/video?keyword=math'); await searchPage.locator('.study-home-entry').first().waitFor(); assert.equal(new URL(searchPage.url()).pathname,'/video'); assert.equal(await searchPage.locator('.bili-video-card').isVisible(),true); assert.equal(await searchPage.locator('.search-tabs').isVisible(),true);
+  for (const palette of ['white','blue','pink','black','green']) {
+    await searchPage.evaluate(palette=>chrome.storage.local.set({palette,theme:'dark'}),palette);
+    const colors=await searchPage.evaluate(()=>{const probe=document.createElement('span');probe.style.color='var(--study-text)';probe.style.background='var(--study-bg)';document.body.append(probe);const result={expectedText:getComputedStyle(probe).color,expectedBg:getComputedStyle(probe).backgroundColor,text:getComputedStyle(document.querySelector('.bili-video-card__info--tit')).color,bg:getComputedStyle(document.body).backgroundColor};probe.remove();return result});
+    assert.equal(colors.text,colors.expectedText);assert.equal(colors.bg,colors.expectedBg);
+  }
   // Concurrent calls are serialized by the real worker, so neither favorite is lost.
   const results = await Promise.all(['201','202'].map(id => send({ channel: 'bili-focus', type: 'library.mutate', action: { type: 'item.save', kind: 'teacher', item: { id, name: `并发${id}`, categoryId: 'default' } } })));
   assert.ok(results.every(result => result.ok)); assert.ok(data.library.teachers.some(item => item.id === '201')); assert.ok(data.library.teachers.some(item => item.id === '202'));

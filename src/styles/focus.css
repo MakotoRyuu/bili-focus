@@ -3,10 +3,10 @@ html[data-study-page=home] :is(.bili-feed4-layout,.feed2,.recommended-container_
 html[data-study-page] :is(.ad-report,.ad-floor-exp,.slide-ad-exp,.pop-live-small-mode,.desktop-download-tip,.palette-button-wrap,.vip-entry,.vip-wrap,.right-entry-item--upload,.upload-buttom,.header-upload-entry){display:none!important}
 html[data-study-page] :is(.left-entry,.right-entry,.nav-con) a:is([href*="live.bilibili.com"],[href*="t.bilibili.com"],[href*="/v/popular"],[href*="/bangumi"],[href*="game.bilibili.com"],[href*="mall.bilibili.com"],[href*="message.bilibili.com"],[href*="/download"],[href*="member.bilibili.com"]){display:none!important}
 html[data-study-page] :is(.nav-search-panel,.search-panel,.search-suggest,.trending,.search-trending,.search-history){display:none!important}
-html[data-study-page=home] .bili-header{min-height:64px!important;height:64px!important;background:var(--panel)!important}
-html[data-study-page=home] .bili-header__bar{background:var(--panel)!important;color:var(--text)!important;box-shadow:0 2px 4px #00000008!important}
-html[data-study-page=home] .bili-header__bar :is(.default-entry,.right-entry__outside,.right-entry__outside .right-entry-text){color:var(--text)!important;text-shadow:none!important}
-html[data-study-page=home] body{background:var(--bg)!important}
+html[data-study-page=home] .bili-header{min-height:64px!important;height:64px!important;background:var(--study-panel)!important}
+html[data-study-page=home] .bili-header__bar{background:var(--study-panel)!important;color:var(--study-text)!important;box-shadow:0 2px 4px #00000008!important}
+html[data-study-page=home] .bili-header__bar :is(.default-entry,.right-entry__outside,.right-entry__outside .right-entry-text){color:var(--study-text)!important;text-shadow:none!important}
+html[data-study-page=home] body{background:var(--study-bg)!important}
 html[data-study-page=search] :is(.trending,.search-trending,.search-suggest,.history,.search-history,.suggest-wrap,.login-tip,.search-bottom){display:none!important}
 html[data-study-page=teacher] :is(.n-dynamic,.n-favlist,.n-bangumi,.n-subs,.n-setting,.space-follow-btn,.space-message-btn,.space-dynamic,.space-home,.space-sidebar,.slide-ad,.header-channel){display:none!important}
 html[data-study-page=teacher] :is(a[href*="/dynamic"],a[href*="/favlist"],a[href*="/bangumi"],a[href*="/article"],a[href*="/opus"],a[href*="/audio"]){display:none!important}
@@ -21,8 +21,8 @@ html[data-study-page=video] :is(.bpx-player-row-dm-wrap,.bpx-player-dm-container
 html[data-study-page] .left-entry-main > :not(.home-page-entry),
 html[data-study-page] .right-entry__main > :not([class*="header-avatar"]),
 html[data-study-page] :is(.header-upload-entry,.upload-entry,.upload-btn,.login-panel-popover){display:none!important}
-html[data-study-page=home] .bili-header__bar :is(.left-entry__item-trigger,.right-entry__item-trigger,.trigger-text,.trigger-icon){color:var(--text)!important;text-shadow:none!important}
-html[data-study-page=home] .bili-feed4{background:var(--bg)!important;min-height:100vh}
+html[data-study-page=home] .bili-header__bar :is(.left-entry__item-trigger,.right-entry__item-trigger,.trigger-text,.trigger-icon){color:var(--study-text)!important;text-shadow:none!important}
+html[data-study-page=home] .bili-feed4{background:var(--study-bg)!important;min-height:100vh}
 
 
 /* Original search centered, text-only account controls aligned to the right. */
@@ -32,11 +32,112 @@ html[data-study-page] .study-native-header :is(.center-search-container,.nav-sea
 html[data-study-page] .study-native-header .right-entry{grid-column:3;width:auto!important;min-width:0!important;margin:0!important;padding:0!important;justify-self:end!important}
 html[data-study-page] .study-native-header .right-entry__main{min-width:0!important}
 html[data-study-page] .study-native-header .home-page-entry:not(.study-home-entry){display:none!important}
-.study-home-entry{display:inline-flex!important;align-items:center;color:var(--accent)!important;text-decoration:none!important;padding:8px 0}
-#study-home-fallback{position:fixed;left:24px;top:8px;z-index:10000;background:var(--panel);padding:8px 12px;border-radius:6px}
+.study-home-entry{display:inline-flex!important;align-items:center;color:var(--study-accent)!important;text-decoration:none!important;padding:8px 0}
+#study-home-fallback{position:fixed;left:24px;top:8px;z-index:10000;background:var(--study-panel);padding:8px 12px;border-radius:6px}
 html[data-study-page] .study-native-account-source{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip-path:inset(100%)!important;visibility:hidden!important;pointer-events:none!important}
-html[data-study-page] .right-entry__main > .study-account-inline,.study-account-inline{display:flex!important;align-items:center;gap:24px;color:var(--text);font-size:14px;white-space:nowrap}
+html[data-study-page] .right-entry__main > .study-account-inline,.study-account-inline{display:flex!important;align-items:center;gap:24px;color:var(--study-text);font-size:14px;white-space:nowrap}
 .study-account-name{max-width:160px;overflow:hidden;text-overflow:ellipsis;cursor:default}
-.study-account-inline button{border:0;background:transparent;color:var(--text);padding:8px 0;font:inherit;cursor:pointer}.study-account-inline button:disabled{opacity:.5;cursor:wait}
-.study-account-inline button:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.study-account-inline button{border:0;background:transparent;color:var(--study-text);padding:8px 0;font:inherit;cursor:pointer}.study-account-inline button:disabled{opacity:.5;cursor:wait}
+.study-account-inline button:focus-visible{outline:2px solid var(--study-accent);outline-offset:4px}
 @media(max-width:800px){html[data-study-page] .study-native-header{grid-template-columns:40px minmax(100px,1fr) max-content!important;gap:0 12px!important;padding-inline:16px!important}.study-account-inline{gap:12px!important}.study-account-name{max-width:80px}}
+
+/* Bridge Bilibili's native search tokens to the selected palette. */
+html[data-study-page=search],
+html[data-study-page=search] :is(.bili-video-card,.vui_button,.vui_tabs,.vui_pagenation){
+  --bg1:var(--study-bg)!important;
+  --bg2:var(--study-soft)!important;
+  --bg3:var(--study-panel)!important;
+  --bg1_float:var(--study-panel)!important;
+  --bg2_float:var(--study-soft)!important;
+  --text1:var(--study-text)!important;
+  --text2:var(--study-muted)!important;
+  --text3:var(--study-muted)!important;
+  --text4:var(--study-muted)!important;
+  --line_regular:var(--study-line)!important;
+  --line_light:var(--study-line)!important;
+  --line_bold:var(--study-line)!important;
+  --graph_bg_regular:var(--study-soft)!important;
+  --graph_bg_thick:var(--study-line)!important;
+  --graph_bg_thin:var(--study-bg)!important;
+  --graph_bg_bright:var(--study-panel)!important;
+  --graph_bg_regular_float:var(--study-soft)!important;
+  --graph_weak:var(--study-muted)!important;
+  --graph_medium:var(--study-muted)!important;
+  --graph_icon:var(--study-muted)!important;
+  --graph_strong:var(--study-text)!important;
+  --graph_bold:var(--study-text)!important;
+  --brand_blue:var(--study-accent)!important;
+  --brand_blue_hover:var(--study-accent)!important;
+  --brand_blue_thin:var(--study-soft)!important;
+  --brand_pink:var(--study-accent)!important;
+  --v_bg1:var(--study-bg)!important;
+  --v_bg2:var(--study-soft)!important;
+  --v_bg3:var(--study-panel)!important;
+  --v_bg1_float:var(--study-panel)!important;
+  --v_bg2_float:var(--study-soft)!important;
+  --v_text1:var(--study-text)!important;
+  --v_text2:var(--study-muted)!important;
+  --v_text3:var(--study-muted)!important;
+  --v_text4:var(--study-muted)!important;
+  --v_line_regular:var(--study-line)!important;
+  --v_line_light:var(--study-line)!important;
+  --v_line_bold:var(--study-line)!important;
+  --v_graph_bg_regular:var(--study-soft)!important;
+  --v_graph_bg_thick:var(--study-line)!important;
+  --v_graph_bg_thin:var(--study-bg)!important;
+  --v_graph_bg_bright:var(--study-panel)!important;
+  --v_graph_bg_regular_float:var(--study-soft)!important;
+  --v_graph_weak:var(--study-muted)!important;
+  --v_graph_medium:var(--study-muted)!important;
+  --v_graph_icon:var(--study-muted)!important;
+  --v_graph_strong:var(--study-text)!important;
+  --v_graph_bold:var(--study-text)!important;
+  --v_brand_blue:var(--study-accent)!important;
+  --v_brand_blue_hover:var(--study-accent)!important;
+  --v_brand_blue_thin:var(--study-soft)!important;
+  --v_brand_pink:var(--study-accent)!important;
+  --b_bg1:var(--study-bg)!important;
+  --b_bg2:var(--study-soft)!important;
+  --b_bg3:var(--study-panel)!important;
+  --b_bg1_float:var(--study-panel)!important;
+  --b_bg2_float:var(--study-soft)!important;
+  --b_text1:var(--study-text)!important;
+  --b_text2:var(--study-muted)!important;
+  --b_text3:var(--study-muted)!important;
+  --b_text4:var(--study-muted)!important;
+  --b_line_regular:var(--study-line)!important;
+  --b_line_light:var(--study-line)!important;
+  --b_line_bold:var(--study-line)!important;
+  --b_graph_bg_regular:var(--study-soft)!important;
+  --b_graph_bg_thick:var(--study-line)!important;
+  --b_graph_bg_thin:var(--study-bg)!important;
+  --b_graph_bg_bright:var(--study-panel)!important;
+  --b_graph_bg_regular_float:var(--study-soft)!important;
+  --b_graph_weak:var(--study-muted)!important;
+  --b_graph_medium:var(--study-muted)!important;
+  --b_graph_icon:var(--study-muted)!important;
+  --b_graph_strong:var(--study-text)!important;
+  --b_graph_bold:var(--study-text)!important;
+  --b_brand_blue:var(--study-accent)!important;
+  --b_brand_blue_hover:var(--study-accent)!important;
+  --b_brand_blue_thin:var(--study-soft)!important;
+  --b_brand_pink:var(--study-accent)!important;
+}
+html[data-study-page=search] :is(body,.search-layout,.search-header,.search-content,.search-page-wrapper){background:var(--study-bg)!important;color:var(--study-text)!important}
+html[data-study-page=search] :is(.study-native-header,.search-input-wrap,.search-input-container,.vui_pagenation--btn){background:var(--study-panel)!important;color:var(--study-text)!important;border-color:var(--study-line)!important}
+html[data-study-page=search] :is(.search-input-el,.nav-search-input){background:transparent!important;color:var(--study-text)!important}
+html[data-study-page=search] :is(.search-input-el,.nav-search-input)::placeholder{color:var(--study-muted)!important}
+html[data-study-page=search] :is(.search-button,.vui_button--active-blue){background:var(--study-button)!important;color:var(--study-on-button)!important;border-color:var(--study-button)!important}
+html[data-study-page=search] .keyword{color:var(--study-accent)!important}
+html[data-study-page=search] .search-line{background:var(--study-line)!important}
+/* Match the content container at wide, desktop and narrow widths. */
+html[data-study-page]{--study-content-inset:max(60px,calc((100vw - 1800px)/2 + 60px))}
+html[data-study-page] .study-native-header{padding-inline:var(--study-content-inset)!important;box-sizing:border-box!important}
+html[data-study-page] .study-native-header :is(.left-entry,.left-entry-main){padding-left:0!important;margin-left:0!important}
+.study-home{box-sizing:border-box;width:100%}
+#study-home-fallback{left:var(--study-content-inset);padding-inline:0}
+@media(max-width:1000px){html[data-study-page]{--study-content-inset:24px}}
+/* Video cards define some text colors locally rather than using root tokens. */
+html[data-study-page=search] :is(.bili-video-card__info--tit,.bili-video-card__info--tit a,.vui_tabs--nav-link,.user-name,.bili-user-card__info--name){color:var(--study-text)!important}
+html[data-study-page=search] :is(.bili-video-card__info--owner,.bili-video-card__info--author,.bili-video-card__info--date,.vui_tabs--nav-num){color:var(--study-muted)!important}
+html[data-study-page=search] :is(.vui_tabs--nav-item-active .vui_tabs--nav-link,.vui_button--tab.vui_button--active){color:var(--study-accent)!important;background:var(--study-soft)!important}
