@@ -123,8 +123,10 @@ html[data-study-page=search] :is(.bili-video-card,.vui_button,.vui_tabs,.vui_pag
   --b_brand_blue_thin:var(--study-soft)!important;
   --b_brand_pink:var(--study-accent)!important;
 }
-html[data-study-page=search] :is(body,.search-layout,.search-header,.search-content,.search-page-wrapper){background:var(--study-bg)!important;color:var(--study-text)!important}
-html[data-study-page=search] :is(.study-native-header,.search-input-wrap,.search-input-container,.vui_pagenation--btn){background:var(--study-panel)!important;color:var(--study-text)!important;border-color:var(--study-line)!important}
+/* The full-width search row belongs to the page, not the input surface.
+   Keep it opaque so sticky search does not expose scrolling results. */
+html[data-study-page=search] :is(body,.search-layout,.search-header,.search-input,.search-input-container,.search-content,.search-page-wrapper){background:var(--study-bg)!important;color:var(--study-text)!important}
+html[data-study-page=search] :is(.study-native-header,.search-input-wrap,.vui_pagenation--btn){background:var(--study-panel)!important;color:var(--study-text)!important;border-color:var(--study-line)!important}
 html[data-study-page=search] :is(.search-input-el,.nav-search-input){background:transparent!important;color:var(--study-text)!important}
 html[data-study-page=search] :is(.search-input-el,.nav-search-input)::placeholder{color:var(--study-muted)!important}
 html[data-study-page=search] :is(.search-button,.vui_button--active-blue){background:var(--study-button)!important;color:var(--study-on-button)!important;border-color:var(--study-button)!important}
