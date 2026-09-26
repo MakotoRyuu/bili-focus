@@ -40,7 +40,7 @@
 
 ## 安装／更新
 
-当前发行版：`releases/bili-focus-0.4.6.zip`。解压 ZIP 后，在 Chrome 扩展管理页开启开发者模式，点击「加载已解压的扩展程序」，选择解压后包含 `manifest.json` 的文件夹。版本更新见 [CHANGELOG.md](CHANGELOG.md)。
+当前发行版：`releases/bili-focus-0.4.7.zip`。解压 ZIP 后，在 Chrome 扩展管理页开启开发者模式，点击「加载已解压的扩展程序」，选择解压后包含 `manifest.json` 的文件夹。版本更新见 [CHANGELOG.md](CHANGELOG.md)。
 
 也可以直接加载仓库根目录进行开发。尚未发布到 Chrome 商店：
 
