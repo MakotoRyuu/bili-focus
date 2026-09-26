@@ -123,8 +123,6 @@ html[data-study-page=search] :is(.bili-video-card,.vui_button,.vui_tabs,.vui_pag
   --b_brand_blue_thin:var(--study-soft)!important;
   --b_brand_pink:var(--study-accent)!important;
 }
-/* The full-width search row belongs to the page, not the input surface.
-   Keep it opaque so sticky search does not expose scrolling results. */
 html[data-study-page=search] :is(body,.search-layout,.search-header,.search-input,.search-input-container,.search-content,.search-page-wrapper){background:var(--study-bg)!important;color:var(--study-text)!important}
 html[data-study-page=search] :is(.study-native-header,.search-input-wrap,.vui_pagenation--btn){background:var(--study-panel)!important;color:var(--study-text)!important;border-color:var(--study-line)!important}
 html[data-study-page=search] :is(.search-input-el,.nav-search-input){background:transparent!important;color:var(--study-text)!important}
@@ -146,3 +144,9 @@ html[data-study-page=search] :is(.vui_tabs--nav-item-active .vui_tabs--nav-link,
 
 /* Search uses cookie-free requests and has no account controls. */
 html[data-study-page=search] :is(.bili-header__bar,.bili-mini-header__content,.international-header .mini-header) :is(.right-entry,.right-entry__main,.study-account-inline,.header-avatar-unlogin-wrap){display:none!important}
+
+/* Theme the native header search surface as well as the separate results input. */
+html[data-study-page] .study-native-header :is(#nav-searchform,.nav-search-content){background:var(--study-bg)!important;color:var(--study-text)!important;border-color:var(--study-line)!important}
+html[data-study-page] .study-native-header .nav-search-input{background:transparent!important;color:var(--study-text)!important}
+html[data-study-page] .study-native-header .nav-search-input::placeholder{color:var(--study-muted)!important}
+html[data-study-page] .study-native-header :is(.nav-search-btn,.nav-search-submit){color:var(--study-muted)!important}

@@ -145,6 +145,16 @@ async function main() {
   await trackedHome.evaluate(() => document.body.replaceChildren());
   await trackedHome.locator('.study-home').waitFor();
   assert.equal(await trackedHome.locator('[data-collection]').count(), 2);
+  // Reproduce a header arriving after the fallback library, as in native hydration.
+  await trackedHome.evaluate(markup => document.body.insertAdjacentHTML('beforeend', markup), header);
+  await trackedHome.waitForFunction(() => document.querySelector('.bili-header')?.nextElementSibling?.id === 'study-home');
+  const headerBox = await trackedHome.locator('.bili-header').boundingBox();
+  const libraryBox = await trackedHome.locator('.study-home').boundingBox();
+  assert.ok(headerBox.y + headerBox.height <= libraryBox.y);
+  assert.equal(await trackedHome.locator('.study-home').count(), 1);
+  // Replacement headers must also regain their position above the same library.
+  await trackedHome.evaluate(markup => { document.querySelector('.bili-header').remove(); document.body.insertAdjacentHTML('beforeend', markup); }, header);
+  await trackedHome.waitForFunction(() => document.querySelector('.bili-header')?.nextElementSibling?.id === 'study-home');
   console.log('Browser integration passed: migration, header/menu, category invariants/cascade, teacher toggle/artwork, manual courses/cover, playback P, failure handling, concurrent writes and cross-tab sync.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await browser?.close(); });

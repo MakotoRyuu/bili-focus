@@ -51,6 +51,12 @@
         }).catch(() => {}); // Initial-letter fallback is intentional for unavailable public artwork.
       }
     }
+    // The native header can arrive after our body fallback or be replaced by hydration.
+    // Reconcile order even when the library is already mounted.
+    if (kind === 'home' && mounted?.isConnected) {
+      const header = document.querySelector('.bili-header, .international-header, header');
+      if (header && !header.contains(mounted) && header.nextElementSibling !== mounted) header.after(mounted);
+    }
     if (kind === 'teacher') {
       if (!document.querySelector('#study-save-teacher')) {
         const anchor = document.querySelector('.upinfo-detail, .h-action, .space-header .info, .h-info');
