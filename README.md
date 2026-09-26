@@ -40,13 +40,15 @@
 
 ## 安装／更新
 
-目前未发布 Chrome 商店，使用本地加载：
+当前发行版：`releases/bili-focus-0.4.6.zip`。解压 ZIP 后，在 Chrome 扩展管理页开启开发者模式，点击「加载已解压的扩展程序」，选择解压后包含 `manifest.json` 的文件夹。版本更新见 [CHANGELOG.md](CHANGELOG.md)。
+
+也可以直接加载仓库根目录进行开发。尚未发布到 Chrome 商店：
 
 1. 打开 `chrome://extensions`（Edge 使用 `edge://extensions`）。
 2. 开启「开发者模式」，点击「加载已解压的扩展程序」，选择**仓库根目录**，不是 `src`。
 3. 打开 `https://www.bilibili.com/`。
 
-更新文件后，先在扩展管理页点击「重新加载」，再刷新 B站标签页。0.3.0 增加了公开资料接口 `api.bilibili.com` 的访问权限，若浏览器提示权限变化需重新启用插件。
+更新文件后，先在扩展管理页点击「重新加载」，再刷新 B站标签页。发行 ZIP 可通过 `npm run package` 从版本号与源文件重新生成。0.3.0 增加了公开资料接口 `api.bilibili.com` 的访问权限，若浏览器提示权限变化需重新启用插件。
 
 若旧版本报 `ERR_FILE_NOT_FOUND`，重新加载扩展后再访问 B站。根目录的 `study.html` 只用于旧入口升级提示，不会自动跳转造成循环。不要卸载，卸载会清除本地收藏。
 

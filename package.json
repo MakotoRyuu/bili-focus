@@ -6,7 +6,8 @@
     "test": "node --test tests/*.test.cjs",
     "check": "node scripts/check.cjs",
     "test:browser": "node tests/browser.cjs",
-    "test:privacy": "node tests/search-privacy.cjs"
+    "test:privacy": "node tests/search-privacy.cjs",
+    "package": "node scripts/package.cjs"
   },
   "devDependencies": {
     "playwright": "^1.63.0"

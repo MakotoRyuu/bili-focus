@@ -8,6 +8,7 @@ test-results/
 coverage/
 *.log
 *.zip
+!releases/*.zip
 *.crx
 *.pem
 # Local task notes and temporary outputs
