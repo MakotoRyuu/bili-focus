@@ -137,11 +137,27 @@
         heading.append(button('添加分类', () => addCategory(kind), 'study-secondary'));
         heading.append(button(`添加${labels[kind]}`, () => addItem(kind), 'study-primary'));
         section.append(heading);
-        for (const category of state[`${kind}Categories`]) {
+        const categories = state[`${kind}Categories`];
+        for (const [index, category] of categories.entries()) {
           const group = el('section', '', 'study-category'); group.dataset.category = category.id;
           const separator = el('div', '', 'study-category-heading'); separator.append(el('h3', category.name), el('span', '', 'study-divider'));
-          const remove = button('删除分类', () => deleteCategory(kind, category), 'study-category-remove');
-          remove.disabled = state[`${kind}Categories`].length === 1; remove.title = remove.disabled ? '至少保留一个分类' : '同时移除该分类中的全部收藏'; separator.append(remove); group.append(separator);
+          const menu = el('details', '', 'study-category-menu');
+          const trigger = el('summary', '分类操作');
+          trigger.setAttribute('aria-label', `${category.name}的分类操作`);
+          const actions = el('div', '', 'study-category-actions');
+          const remove = button('删除分类', () => { menu.open = false; deleteCategory(kind, category); });
+          remove.disabled = categories.length === 1; remove.title = remove.disabled ? '至少保留一个分类' : '同时移除该分类中的全部收藏'; actions.append(remove);
+          for (const [label, direction, disabled] of [['上移', -1, index === 0], ['下移', 1, index === categories.length - 1]]) {
+            const move = button(label, async () => {
+              menu.open = false;
+              try { await mutate({ type: 'category.move', kind, id: category.id, direction }); }
+              catch (e) { notice(e.message); }
+            });
+            move.disabled = disabled;
+            actions.append(move);
+          }
+          menu.append(trigger, actions); separator.append(menu);
+          group.append(separator);
           const grid = el('div', '', 'study-grid');
           const items = state[`${kind}s`].filter(item => item.categoryId === category.id);
           if (!items.length) grid.append(el('p', `此分类还没有${labels[kind]}。`, 'study-empty'));

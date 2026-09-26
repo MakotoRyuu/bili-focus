@@ -69,9 +69,23 @@ async function main() {
   await page.evaluate(()=>{document.querySelector('.header-avatar-wrap').remove();const guest=document.createElement('div');guest.className='header-avatar-unlogin-wrap';const entry=document.createElement('button');entry.className='header-avatar-unlogin-entry';entry.textContent='原生登录';entry.onclick=()=>{window.loginClicked=true};guest.append(entry);document.querySelector('.right-entry__main').prepend(guest)});
   await page.locator('.study-account-login').waitFor(); await page.locator('.study-account-login').click(); assert.equal(await page.evaluate(()=>window.loginClicked),true);
   const teachers = page.locator('[data-collection=teacher]'), courses = page.locator('[data-collection=course]');
+  const teacherMenu = category => category.locator('.study-category-menu');
+  await teacherMenu(teachers.locator('[data-category=default]')).locator('summary').click();
   assert.equal(await teachers.getByRole('button', { name: '删除分类', exact: true }).isDisabled(), true);
+  assert.equal(await teachers.getByRole('button', { name: '上移', exact: true }).isDisabled(), true);
   await teachers.getByRole('button', { name: '添加分类', exact: true }).click(); await page.getByLabel('分类名称', { exact: true }).fill('数学'); await page.locator('dialog').getByRole('button', { name: '添加分类', exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll('[data-collection=teacher] .study-category').length === 2);
+  const teacherOrder = () => teachers.locator('.study-category h3').allTextContents();
+  const mathCategory = () => teachers.locator('.study-category').filter({ has: page.getByRole('heading', { name: '数学', exact: true }) });
+  await teacherMenu(mathCategory()).locator('summary').click();
+  await mathCategory().getByRole('button', { name: '上移' }).click();
+  await page.waitForFunction(() => document.querySelector('[data-collection=teacher] .study-category h3')?.textContent === '数学');
+  assert.deepEqual(await teacherOrder(), ['数学', '未分类']);
+  assert.deepEqual(await courses.locator('.study-category').evaluateAll(nodes => nodes.map(node => node.dataset.category)), ['default']);
+  await teacherMenu(mathCategory()).locator('summary').click();
+  await mathCategory().getByRole('button', { name: '下移' }).click();
+  await page.waitForFunction(() => document.querySelector('[data-collection=teacher] .study-category h3')?.textContent === '未分类');
+  assert.deepEqual(await teacherOrder(), ['未分类', '数学']);
   const teacherPage = await open('https://space.bilibili.com/123/upload/video'); await teacherPage.locator('#study-save-teacher').click();
   assert.equal(await teacherPage.getByLabel('分类', { exact: true }).inputValue(), '');
   await teacherPage.getByLabel('昵称', { exact: true }).fill('我的数学老师'); await teacherPage.getByLabel('分类', { exact: true }).selectOption({ label: '数学' });
@@ -106,6 +120,7 @@ async function main() {
   await page.getByLabel('分类',{exact:true}).selectOption({label:'数学'}); await page.getByRole('button',{name:'保存修改',exact:true}).click();
 
   const math = teachers.locator('.study-category').filter({ has: page.getByRole('heading', { name: '数学', exact: true }) });
+  await math.locator('.study-category-menu summary').click();
   await math.getByRole('button', { name: '删除分类', exact: true }).click(); await page.getByRole('button', { name: '删除分类及收藏', exact: true }).click();
   await page.waitForFunction(() => document.querySelectorAll('[data-collection=teacher] .study-category').length === 1);
   assert.equal(await page.locator('.study-teacher').count(), 1); assert.equal(await page.locator('.study-course').count(), 1);

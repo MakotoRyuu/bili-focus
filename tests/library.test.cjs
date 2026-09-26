@@ -29,6 +29,21 @@ test('course categories are independent and cascade; empty and duplicate categor
   state = add(state, { type: 'category.remove', kind: 'course', id: 'math' });
   assert.equal(state.courses.length, 0); assert.equal(state.teacherCategories.length, 1);
 });
+test('moving a category swaps adjacent positions without moving favorites or the other collection', () => {
+  let state = Library.normalize();
+  state = add(state, { type: 'category.add', kind: 'teacher', id: 'math', name: '数学' });
+  state = add(state, { type: 'category.add', kind: 'teacher', id: 'english', name: '英语' });
+  state = add(state, { type: 'item.save', kind: 'teacher', item: { id: '123', name: '老师', categoryId: 'math' } });
+  state = add(state, { type: 'category.move', kind: 'teacher', id: 'math', direction: -1 });
+  assert.deepEqual(state.teacherCategories.map(item => item.id), ['math', 'default', 'english']);
+  assert.equal(state.teachers[0].categoryId, 'math');
+  assert.deepEqual(state.courseCategories.map(item => item.id), ['default']);
+  state = add(state, { type: 'category.move', kind: 'teacher', id: 'math', direction: -1 });
+  assert.deepEqual(state.teacherCategories.map(item => item.id), ['math', 'default', 'english']);
+  state = add(state, { type: 'category.move', kind: 'teacher', id: 'math', direction: 1 });
+  assert.deepEqual(state.teacherCategories.map(item => item.id), ['default', 'math', 'english']);
+  assert.throws(() => add(state, { type: 'category.move', kind: 'teacher', id: 'gone', direction: 1 }), /分类不存在/);
+});
 test('re-saving a course preserves watched P; av progress updates the canonical BV course', () => {
   let state = Library.normalize(); const item = { id: 'BV1GJ411x7h7', aid: 1234, name: '课', categoryId: 'default', pageCount: 6 };
   state = add(state, { type: 'item.save', kind: 'course', item });

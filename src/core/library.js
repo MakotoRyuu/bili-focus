@@ -56,6 +56,13 @@
       if (!state[categories].some(item => item.id === action.id)) throw new Error('分类不存在。');
       state[categories] = state[categories].filter(item => item.id !== action.id);
       state[items] = state[items].filter(item => item.categoryId !== action.id);
+    } else if (action.type === 'category.move') {
+      const index = state[categories].findIndex(item => item.id === action.id);
+      if (index < 0) throw new Error('分类不存在。');
+      if (action.direction !== -1 && action.direction !== 1) throw new Error('无效的移动方向。');
+      const next = index + action.direction;
+      if (next < 0 || next >= state[categories].length) return state;
+      [state[categories][index], state[categories][next]] = [state[categories][next], state[categories][index]];
     } else if (action.type === 'item.save') {
       const item = action.item;
       if (!item || !String(item.name || '').trim()) throw new Error('请填写名称。');

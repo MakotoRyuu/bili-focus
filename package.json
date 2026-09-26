@@ -1,6 +1,6 @@
 {
   "name": "bili-focus",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "private": true,
   "scripts": {
     "test": "node --test tests/*.test.cjs",
