@@ -12,9 +12,9 @@ test('only course, teacher and account search routes survive', () => {
   assert.equal(Study.route('https://search.bilibili.com/all?keyword=math'), 'search');
   for (const path of ['/', '/v/popular/all', '/v/dynamic', '/bangumi/play/ep123']) assert.equal(Study.route(`https://www.bilibili.com${path}`), 'home');
 });
-test('search preserves input as a query parameter, always in account search', () => {
+test('search preserves input as a query parameter, in video search', () => {
   const url = new URL(Study.searchUrl(' 数学 & 物理#老师 '));
-  assert.equal(url.pathname, '/upuser');
+  assert.equal(url.pathname, '/video');
   assert.equal(url.searchParams.get('keyword'), '数学 & 物理#老师');
   assert.equal(url.hash, '');
 });
@@ -22,6 +22,6 @@ test('manifest resources exist and permissions stay minimal', () => {
   const fs = require('node:fs'); const path = require('node:path');
   const manifest = require('../manifest.json');
   assert.equal(manifest.manifest_version, 3);
-  assert.deepEqual(manifest.permissions, ['storage']);
+  assert.deepEqual(manifest.permissions, ['storage', 'declarativeNetRequestWithHostAccess']);
   for (const file of [manifest.background.service_worker, ...manifest.content_scripts.flatMap(script => [...script.js, ...script.css])]) assert.ok(fs.existsSync(path.join(__dirname, '..', file)), file);
 });

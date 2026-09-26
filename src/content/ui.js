@@ -67,15 +67,9 @@
       for (const item of getState()[`${kind}Categories`]) { const option = el('option', item.name); option.value = item.id; category.append(option); }
       category.value = selected; field(form, '分类', category); return category;
     }
-    function addItem(kind, teacher = null, unified = false) {
-      return dialog(teacher ? '填写老师昵称' : '添加收藏', form => {
+    function addItem(kind, teacher = null) {
+      return dialog(teacher ? '填写老师昵称' : `添加${labels[kind]}`, form => {
         const body = el('div'); let url, name, category;
-        if (unified) {
-          const type = el('select');
-          for (const value of ['teacher', 'course']) { const option = el('option', labels[value]); option.value = value; type.append(option); }
-          type.value = kind; field(form, '收藏类型', type);
-          type.onchange = () => { kind = type.value; renderFields(); };
-        }
         form.append(body);
         function renderFields() {
           body.replaceChildren(); const isTeacher = kind === 'teacher';
@@ -132,12 +126,12 @@
     }
     function render(root) {
       root.replaceChildren();
-      for (const kind of ['teacher', 'course']) {
+      for (const kind of ['course', 'teacher']) {
         const state = getState(), section = el('section', '', 'study-section'); section.dataset.collection = kind;
         const heading = el('div', '', 'study-heading'); heading.append(el('h2', kind === 'teacher' ? '我的老师' : '我的课程'));
-        if (kind === 'teacher') heading.append(settings());
+        if (kind === 'course') heading.append(settings());
         heading.append(button('添加分类', () => addCategory(kind), 'study-secondary'));
-        if (kind === 'teacher') heading.append(button('添加收藏', () => addItem('teacher', null, true), 'study-primary'));
+        heading.append(button(`添加${labels[kind]}`, () => addItem(kind), 'study-primary'));
         section.append(heading);
         for (const category of state[`${kind}Categories`]) {
           const group = el('section', '', 'study-category'); group.dataset.category = category.id;

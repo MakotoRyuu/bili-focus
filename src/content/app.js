@@ -97,7 +97,6 @@
     if (lastUrl !== location.href) {
       lastUrl = location.href; document.documentElement.dataset.studyPage = kind;
       if (kind === 'home' && location.pathname !== '/') { location.replace(home); return; }
-      if (kind === 'search' && location.pathname !== '/upuser') { location.replace(Study.searchUrl(new URL(location.href).searchParams.get('keyword') || '')); return; }
       if (kind === 'teacher' && !/^\/\d+\/(?:upload|video|channel|lists)(?:\/|$)/.test(location.pathname)) {
         location.replace(`https://space.bilibili.com/${Study.teacherId(location.href)}/upload/video`); return;
       }
@@ -106,7 +105,7 @@
     }
     FocusHeader.update(); mount(kind);
     for (const input of document.querySelectorAll('.nav-search-input, #nav-searchform input, .search-input-el')) {
-      if (input.placeholder !== '搜索老师 / UP 主') input.placeholder = '搜索老师 / UP 主'; input.removeAttribute('title');
+      if (input.placeholder !== '搜索视频 / UP 主') input.placeholder = '搜索视频 / UP 主'; input.removeAttribute('title');
     }
     if (kind === 'video') captureProgress();
   }

@@ -15,6 +15,6 @@
     if (url.hostname === 'www.bilibili.com' && /^\/video\/(?:BV[\w]+|av\d+)/i.test(url.pathname)) return 'video';
     return 'home';
   };
-  const searchUrl = value => `https://search.bilibili.com/upuser?keyword=${encodeURIComponent(value.trim())}`;
+  const searchUrl = value => `https://search.bilibili.com/video?keyword=${encodeURIComponent(value.trim())}`;
   globalThis.Study = { teacherId, route, searchUrl };
 })();

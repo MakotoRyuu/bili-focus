@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "专注 B站",
-  "version": "0.3.1",
+  "version": "0.4.0",
   "description": "收藏老师，找到课程，专心学习。",
   "permissions": [
-    "storage"
+    "storage",
+    "declarativeNetRequestWithHostAccess"
   ],
   "background": {
     "service_worker": "src/background/worker.js"
@@ -47,6 +48,16 @@
     }
   ],
   "host_permissions": [
-    "https://api.bilibili.com/*"
-  ]
+    "https://api.bilibili.com/*",
+    "https://search.bilibili.com/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "search_privacy",
+        "enabled": true,
+        "path": "src/rules/search-privacy.json"
+      }
+    ]
+  }
 }

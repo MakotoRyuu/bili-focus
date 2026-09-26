@@ -1,0 +1,99 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "cookie",
+          "operation": "remove"
+        }
+      ]
+    },
+    "condition": {
+      "requestDomains": [
+        "search.bilibili.com"
+      ],
+      "resourceTypes": [
+        "main_frame",
+        "sub_frame",
+        "xmlhttprequest",
+        "script",
+        "image",
+        "stylesheet",
+        "font",
+        "media",
+        "ping",
+        "other",
+        "websocket"
+      ]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "cookie",
+          "operation": "remove"
+        }
+      ]
+    },
+    "condition": {
+      "requestDomains": [
+        "api.bilibili.com"
+      ],
+      "regexFilter": "^https://api\\.bilibili\\.com(:[0-9]+)?/x/(web-interface/(wbi/)?search|v2/search)([/?]|$)",
+      "resourceTypes": [
+        "main_frame",
+        "sub_frame",
+        "xmlhttprequest",
+        "script",
+        "image",
+        "stylesheet",
+        "font",
+        "media",
+        "ping",
+        "other",
+        "websocket"
+      ]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 1,
+    "action": {
+      "type": "modifyHeaders",
+      "requestHeaders": [
+        {
+          "header": "cookie",
+          "operation": "remove"
+        }
+      ]
+    },
+    "condition": {
+      "initiatorDomains": [
+        "search.bilibili.com"
+      ],
+      "requestDomains": [
+        "api.bilibili.com"
+      ],
+      "resourceTypes": [
+        "main_frame",
+        "sub_frame",
+        "xmlhttprequest",
+        "script",
+        "image",
+        "stylesheet",
+        "font",
+        "media",
+        "ping",
+        "other",
+        "websocket"
+      ]
+    }
+  }
+]
