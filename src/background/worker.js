@@ -54,7 +54,7 @@ async function metadata(message) {
     if (!data.season_id || !first?.id || !selected?.id) throw new Error('暂时无法获取该课堂课程的课时资料。');
     return {
       id: `ss${data.season_id}`, name: String(data.title || ''), cover: Library.imageUrl(data.cover),
-      pageCount: Math.max(1, Number(data.ep_count) || episodes.length),
+      pageCount: episodes.reduce((count, episode) => Math.max(count, Number(episode.index) || 0), Math.max(1, Number(data.ep_count) || 0)),
       firstEpisodeId: String(first.id), startEpisodeId: String(selected.id),
       episodeId: String(selected.id), page: Number(selected.index) || 1
     };

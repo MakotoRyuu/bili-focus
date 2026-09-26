@@ -3,6 +3,7 @@
   let state = Library.normalize(), loaded = false, lastUrl = '', mounted = null;
   let palette = 'blue', appearance = 'system';
   const avatarAttempts = new Set();
+  const classroomCoverAttempts = new Set();
   let lastProgress = '', progressBusy = false;
   const skippedClassroomEpisodes = new Set();
   async function rpc(type, payload = {}) {
@@ -50,6 +51,14 @@
         rpc('metadata', { kind: 'teacher', url: teacher.id }).then(data => {
           if (data.avatar) return mutate({ type: 'teacher.avatar', kind: 'teacher', id: teacher.id, avatar: data.avatar });
         }).catch(() => {}); // Initial-letter fallback is intentional for unavailable public artwork.
+      }
+      for (const course of state.courses.filter(item => /^ss[1-9]\d*$/.test(item.id) && !item.cover)) {
+        if (classroomCoverAttempts.has(course.id)) continue;
+        classroomCoverAttempts.add(course.id);
+        rpc('metadata', { kind: 'course', url: `https://www.bilibili.com/cheese/play/${course.id}` })
+          .then(data => mutate({ type: 'course.metadata', kind: 'course', id: course.id,
+            cover: data.cover, pageCount: data.pageCount, firstEpisodeId: data.firstEpisodeId }))
+          .catch(() => {}); // Keep the existing card when B站 artwork is unavailable.
       }
     }
     // The native header can arrive after our body fallback or be replaced by hydration.

@@ -48,7 +48,10 @@ test('course URLs and artwork reject lookalike hosts, scripts and invalid IDs', 
   assert.equal(Library.courseUrl('https://bilibili.com/video/av123/?p=-1').page, 1);
   for (const value of ['https://www.bilibili.com.evil.test/video/av123','javascript:alert(1)','https://b23.tv/abc','https://www.bilibili.com/video/BVbad','https://www.bilibili.com/cheese/play/ep0','https://www.bilibili.com/cheese/play/ep12wrong']) assert.equal(Library.courseUrl(value), null);
   assert.equal(Library.imageUrl('//i0.hdslb.com/bfs/face/abc.jpg'), 'https://i0.hdslb.com/bfs/face/abc.jpg');
+  assert.equal(Library.imageUrl('https://archive.biliimg.com/bfs/archive/b812154ed17681ea67748ec936467ac6e5f3688a.jpg'), 'https://archive.biliimg.com/bfs/archive/b812154ed17681ea67748ec936467ac6e5f3688a.jpg');
+  assert.equal(Library.imageUrl('https://archive.biliimg.com/bfs/archive/42ddc1dd232321ab61ef321ee036e2c936fcd4dd.jpg'), 'https://archive.biliimg.com/bfs/archive/42ddc1dd232321ab61ef321ee036e2c936fcd4dd.jpg');
   assert.equal(Library.imageUrl('https://hdslb.com.evil.test/img.png'), '');
+  assert.equal(Library.imageUrl('https://biliimg.com.evil.test/img.png'), '');
 });
 test('classroom courses keep episode progress and reopen the watched lesson', () => {
   let state = Library.normalize();
@@ -57,6 +60,12 @@ test('classroom courses keep episode progress and reopen the watched lesson', ()
   state = add(state, { type: 'course.progress', kind: 'course', id: item.id, page: 2, episodeId: '172532' });
   state = add(state, { type: 'item.save', kind: 'course', item });
   assert.equal(state.courses[0].lastPage, 2);
+  assert.equal(state.courses[0].lastEpisodeId, '172532');
+  state.courses[0].cover = '';
+  state = add(state, { type: 'course.metadata', kind: 'course', id: item.id,
+    cover: 'https://archive.biliimg.com/bfs/archive/cover.jpg', pageCount: 22 });
+  assert.equal(state.courses[0].cover, 'https://archive.biliimg.com/bfs/archive/cover.jpg');
+  assert.equal(state.courses[0].pageCount, 22);
   assert.equal(state.courses[0].lastEpisodeId, '172532');
 });
 test('teacher toggle removal and re-add do not create duplicates', () => {

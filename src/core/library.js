@@ -4,7 +4,7 @@
   function imageUrl(value) {
     try {
       const url = new URL(String(value || '').replace(/^\/\//, 'https://'));
-      if (!['https:', 'http:'].includes(url.protocol) || !/(^|\.)hdslb\.com$/.test(url.hostname)) return '';
+      if (!['https:', 'http:'].includes(url.protocol) || !/(^|\.)(?:hdslb|biliimg)\.com$/.test(url.hostname)) return '';
       url.protocol = 'https:'; return url.href;
     } catch { return ''; }
   }
@@ -86,6 +86,13 @@
     } else if (action.type === 'teacher.avatar' && kind === 'teacher') {
       const item = state.teachers.find(item => item.id === action.id);
       if (item && imageUrl(action.avatar)) item.avatar = imageUrl(action.avatar);
+    } else if (action.type === 'course.metadata' && kind === 'course') {
+      const item = state.courses.find(item => item.id === action.id);
+      if (item) {
+        if (imageUrl(action.cover)) item.cover = imageUrl(action.cover);
+        if (Number.isSafeInteger(action.pageCount) && action.pageCount > item.pageCount) item.pageCount = action.pageCount;
+        if (!item.firstEpisodeId && /^[1-9]\d*$/.test(String(action.firstEpisodeId || ''))) item.firstEpisodeId = String(action.firstEpisodeId);
+      }
     } else if (action.type === 'course.progress' && kind === 'course') {
       const item = state.courses.find(item => item.id === action.id || `av${item.aid}` === action.id);
       if (item && Number.isSafeInteger(action.page) && action.page >= 1 && action.page <= item.pageCount) {

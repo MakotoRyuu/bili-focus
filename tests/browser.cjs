@@ -19,7 +19,7 @@ const worker = vm.createContext({ console, structuredClone, URL, AbortSignal, cr
   fetch: async url => {
     if (networkFails) throw new Error('offline');
     return { ok: true, json: async () => ({ code: 0, data: url.includes('/card?') ? { card: { name: '真实账号名', face: 'https://i0.hdslb.com/avatar.png' } } : url.includes('/pugv/view/web/season?') ? {
-      season_id: 4372, title: '测试课堂课程', cover: 'http://i0.hdslb.com/cheese.jpg', ep_count: 2,
+      season_id: 4372, title: '测试课堂课程', cover: 'https://archive.biliimg.com/cheese.jpg', ep_count: 1,
       episodes: [{ id: 172445, index: 1 }, { id: 172532, index: 2 }]
     } : { bvid: 'BV1GJ411x7h7', aid: 1234, title: '测试多 P 课程', pic: 'https://i0.hdslb.com/cover.png', pages: Array(5).fill({}) } }) };
   }
@@ -47,6 +47,7 @@ async function main() {
   for (const file of manifest.content_scripts[0].js) await context.addInitScript({ path: path.join(root, file) });
   await context.route('https://**.bilibili.com/**', route => route.fulfill({ contentType: 'text/html', body: fixture(route.request().url()) }));
   await context.route('https://i0.hdslb.com/**', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#00aeec"/></svg>' }));
+  await context.route('https://archive.biliimg.com/**', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#00aeec"/></svg>' }));
   const page = await open('https://www.bilibili.com/'); await page.locator('.study-home').waitFor();
   assert.equal(await page.locator('.study-teacher .study-card-name').innerText(), '原有昵称');
   assert.equal(await page.locator('#study-status').count(), 0);
@@ -117,6 +118,8 @@ async function main() {
   await page.getByRole('button', { name: '确认收藏', exact: true }).click();
   const classroomCard = page.locator('.study-course').filter({ hasText: '测试课堂课程' });
   await classroomCard.waitFor();
+  await classroomCard.locator('img').waitFor();
+  assert.equal(await classroomCard.locator('img').getAttribute('src'), 'https://archive.biliimg.com/cheese.jpg');
   assert.match(await classroomCard.locator('.study-card-detail').innerText(), /共 2 课/);
   assert.equal(await classroomCard.locator('a').getAttribute('href'), 'https://www.bilibili.com/cheese/play/ep172532');
   const classroomPage = await open('https://www.bilibili.com/cheese/play/ep172532');
@@ -177,6 +180,13 @@ async function main() {
   // Replacement headers must also regain their position above the same library.
   await trackedHome.evaluate(markup => { document.querySelector('.bili-header').remove(); document.body.insertAdjacentHTML('beforeend', markup); }, header);
   await trackedHome.waitForFunction(() => document.querySelector('.bili-header')?.nextElementSibling?.id === 'study-home');
+  const staleLibrary = clone(data.library);
+  const staleClassroom = staleLibrary.courses.find(item => item.id === 'ss4372');
+  staleClassroom.cover = ''; staleClassroom.pageCount = 1;
+  await set({ library: staleLibrary });
+  const restoredHome = await open('https://www.bilibili.com/');
+  await restoredHome.waitForFunction(() => document.querySelector('.study-course img[src="https://archive.biliimg.com/cheese.jpg"]'));
+  assert.equal(data.library.courses.find(item => item.id === 'ss4372').pageCount, 2);
   console.log('Browser integration passed: migration, header/menu, category invariants/cascade, teacher toggle/artwork, manual courses/cover, playback P, failure handling, concurrent writes and cross-tab sync.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await browser?.close(); });
