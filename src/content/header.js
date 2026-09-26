@@ -1,8 +1,17 @@
 (() => {
+  const home = 'https://www.bilibili.com/';
+  const refreshHome = `${home}#study-refresh-once`;
+  if (location.href === refreshHome) {
+    // Consume before reloading, including when the user opens the link in a new tab.
+    history.replaceState(history.state, '', home);
+    const reload = () => location.reload();
+    if (document.readyState === 'complete') reload();
+    else window.addEventListener('load', reload, { once: true });
+  }
   const headerSelector = '.bili-header__bar, .bili-mini-header__content, .international-header .mini-header';
   const primed = new WeakSet();
   function homeLink() {
-    const link = document.createElement('a'); link.href = 'https://www.bilibili.com/'; link.className = 'study-home-entry home-page-entry'; link.setAttribute('aria-label', '返回主页'); link.title = '返回主页';
+    const link = document.createElement('a'); link.href = refreshHome; link.className = 'study-home-entry home-page-entry'; link.setAttribute('aria-label', '返回主页'); link.title = '返回主页';
     // Bilibili's familiar TV silhouette, rendered locally without external assets.
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('width', '30'); svg.setAttribute('height', '30'); svg.setAttribute('aria-hidden', 'true');
     svg.setAttribute('viewBox', '0 0 18 18');
@@ -64,7 +73,11 @@
     if (!link) return;
     event.stopImmediatePropagation();
     if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
-      event.preventDefault(); location.assign('https://www.bilibili.com/');
+      event.preventDefault();
+      const alreadyHome = location.origin + location.pathname + location.search === home;
+      location.assign(refreshHome);
+      // A fragment-only navigation does not load a new document.
+      if (alreadyHome) location.reload();
     }
   }, true);
   globalThis.FocusHeader = { update };

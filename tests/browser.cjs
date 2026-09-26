@@ -123,9 +123,21 @@ async function main() {
       event.preventDefault(); window.nativeNavigationIntercepted = true;
     });
   });
+  let homeLoads = 0;
+  searchPage.on('request', request => {
+    if (request.isNavigationRequest() && request.frame() === searchPage.mainFrame() && request.url() === 'https://www.bilibili.com/') homeLoads++;
+  });
   await searchPage.locator('.study-home-entry').click();
   await searchPage.waitForURL('https://www.bilibili.com/');
   await searchPage.locator('.study-home').waitFor();
+  await searchPage.waitForFunction(() => performance.getEntriesByType('navigation')[0]?.type === 'reload');
+  await searchPage.waitForTimeout(900);
+  assert.equal(homeLoads, 2, 'one homepage navigation followed by exactly one reload');
+  assert.equal(searchPage.url(), 'https://www.bilibili.com/');
+  await searchPage.locator('.study-home-entry').click();
+  await searchPage.waitForTimeout(1200);
+  assert.equal(homeLoads, 4, 'clicking from home also finishes after one additional reload');
+  assert.equal(searchPage.url(), 'https://www.bilibili.com/');
   const trackedHome = await open('https://www.bilibili.com/?spm_id_from=333.337.0.0');
   await trackedHome.waitForURL('https://www.bilibili.com/');
   await trackedHome.locator('.study-home').waitFor();
