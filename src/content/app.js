@@ -118,7 +118,7 @@
     if (lastUrl !== location.href) {
       lastUrl = location.href; document.documentElement.dataset.studyPage = kind;
       if (kind === 'home' && location.href !== home) { location.replace(home); return; }
-      if (kind === 'teacher' && !/^\/\d+\/(?:upload|video|channel|lists)(?:\/|$)/.test(location.pathname)) {
+      if (kind === 'teacher' && !/^\/\d+\/(?:upload|video|channel|lists|pugv)(?:\/|$)/.test(location.pathname)) {
         location.replace(`https://space.bilibili.com/${Study.teacherId(location.href)}/upload/video`); return;
       }
       if (kind !== 'home') { mounted?.remove(); mounted = null; }
