@@ -1,0 +1,16 @@
+node_modules/
+.DS_Store
+.env
+.env.*
+!.env.example
+playwright-report/
+test-results/
+coverage/
+*.log
+*.zip
+*.crx
+*.pem
+# Local task notes and temporary outputs
+Todo.md
+.tmp/
+tmp/

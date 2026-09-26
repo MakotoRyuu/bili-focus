@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "专注 B站",
+  "version": "0.3.0",
+  "description": "收藏老师，找到课程，专心学习。",
+  "permissions": [
+    "storage"
+  ],
+  "background": {
+    "service_worker": "src/background/worker.js"
+  },
+  "action": {
+    "default_title": "打开 B站"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.bilibili.com/*",
+        "https://search.bilibili.com/*",
+        "https://space.bilibili.com/*"
+      ],
+      "js": [
+        "src/core/shared.js",
+        "src/core/library.js",
+        "src/content/ui.js",
+        "src/content/header.js",
+        "src/content/app.js"
+      ],
+      "css": [
+        "src/styles/themes.css",
+        "src/styles/focus.css",
+        "src/styles/library.css"
+      ],
+      "run_at": "document_start"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "study.html"
+      ],
+      "matches": [
+        "https://www.bilibili.com/*",
+        "https://search.bilibili.com/*",
+        "https://space.bilibili.com/*"
+      ]
+    }
+  ],
+  "host_permissions": [
+    "https://api.bilibili.com/*"
+  ]
+}

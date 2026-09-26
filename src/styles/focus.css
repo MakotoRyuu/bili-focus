@@ -1,0 +1,43 @@
+/* Preserve Bilibili's own header, logo, search, account menu and layout. */
+html[data-study-page=home] :is(.bili-feed4-layout,.feed2,.recommended-container_floor-aside,.bili-header__channel,.header-channel,.bili-header__banner,.bili-banner,.channel-floor,.bili-footer,.footer){display:none!important}
+html[data-study-page] :is(.ad-report,.ad-floor-exp,.slide-ad-exp,.pop-live-small-mode,.desktop-download-tip,.palette-button-wrap,.vip-entry,.vip-wrap,.right-entry-item--upload,.upload-buttom,.header-upload-entry){display:none!important}
+html[data-study-page] :is(.left-entry,.right-entry,.nav-con) a:is([href*="live.bilibili.com"],[href*="t.bilibili.com"],[href*="/v/popular"],[href*="/bangumi"],[href*="game.bilibili.com"],[href*="mall.bilibili.com"],[href*="message.bilibili.com"],[href*="/download"],[href*="member.bilibili.com"]){display:none!important}
+html[data-study-page] :is(.nav-search-panel,.search-panel,.search-suggest,.trending,.search-trending,.search-history){display:none!important}
+html[data-study-page=home] .bili-header{min-height:64px!important;height:64px!important;background:var(--panel)!important}
+html[data-study-page=home] .bili-header__bar{background:var(--panel)!important;color:var(--text)!important;box-shadow:0 2px 4px #00000008!important}
+html[data-study-page=home] .bili-header__bar :is(.default-entry,.right-entry__outside,.right-entry__outside .right-entry-text){color:var(--text)!important;text-shadow:none!important}
+html[data-study-page=home] body{background:var(--bg)!important}
+html[data-study-page=search] :is(.search-tabs,.trending,.search-trending,.search-suggest,.history,.search-history,.suggest-wrap,.video-list,.bili-video-card,.login-tip,.search-bottom){display:none!important}
+html[data-study-page=teacher] :is(.n-dynamic,.n-favlist,.n-bangumi,.n-subs,.n-setting,.space-follow-btn,.space-message-btn,.space-dynamic,.space-home,.space-sidebar,.slide-ad,.header-channel){display:none!important}
+html[data-study-page=teacher] :is(a[href*="/dynamic"],a[href*="/favlist"],a[href*="/bangumi"],a[href*="/article"],a[href*="/opus"],a[href*="/audio"]){display:none!important}
+/* Teacher social actions: follow, message and the report/block menu. */
+html[data-study-page=teacher] .header-upinfo .operations,
+html[data-study-page=teacher] .upinfo :is(.space-head-follow,.message-btn,.more-actions),
+html[data-study-page=teacher] .h-action > :not(#study-save-teacher){display:none!important}
+html[data-study-page=video] :is(#comment,#commentapp,.comment-container,.reply-box,.recommend-list-v1,.recommend-list,.rec-list,.video-page-special-card-small,.video-page-game-card-small,.video-page-operator-card-small,.ad-report,.video-toolbar-container,.video-toolbar,.video-tag-container,.tag-container,.video-note,.activity-m-v1,.members-info,.danmaku-box,.bpx-player-dm-wrap,.bpx-player-dm-mask-wrap,.bpx-player-dm-switch,.bpx-player-dm-setting,.bpx-player-sending-area,.bpx-player-ending-related,.bpx-player-ending-recommend,.bpx-player-ending-panel,.bilibili-player-video-danmaku,.bilibili-player-video-sendbar){display:none!important}
+html[data-study-page=video] :is(.bpx-player-row-dm-wrap,.bpx-player-dm-container){visibility:hidden!important;pointer-events:none!important}
+
+/* Current native header: keep its home entry and avatar, remove entertainment shortcuts. */
+html[data-study-page] .left-entry-main > :not(.home-page-entry),
+html[data-study-page] .right-entry__main > :not([class*="header-avatar"]),
+html[data-study-page] :is(.header-upload-entry,.upload-entry,.upload-btn,.login-panel-popover){display:none!important}
+html[data-study-page=home] .bili-header__bar :is(.left-entry__item-trigger,.right-entry__item-trigger,.trigger-text,.trigger-icon){color:var(--text)!important;text-shadow:none!important}
+html[data-study-page=home] .bili-feed4{background:var(--bg)!important;min-height:100vh}
+
+/* Search and account form one compact group, leaving room for the account popover. */
+html[data-study-page] .study-native-header{display:grid!important;grid-template-columns:minmax(110px,1fr) minmax(220px,500px) max-content minmax(140px,1fr)!important;gap:0 20px!important;align-items:center!important}
+html[data-study-page] .study-native-header .left-entry{grid-column:1;width:auto!important;min-width:0!important}
+html[data-study-page] .study-native-header :is(.center-search-container,.nav-search-container){grid-column:2;width:100%!important;min-width:0!important;margin:0!important}
+html[data-study-page] .study-native-header .right-entry{grid-column:3;width:auto!important;min-width:0!important;margin:0!important;padding:0!important;justify-content:flex-start!important}
+html[data-study-page] .study-native-header .right-entry__main{gap:0!important;min-width:0!important}
+html[data-study-page] .study-native-header .home-page-entry:not(.study-home-entry){display:none!important}
+.study-home-entry{display:inline-flex!important;align-items:center;white-space:nowrap;color:var(--text)!important;font-size:14px;text-decoration:none!important;padding:8px 0}
+#study-home-fallback{position:fixed;left:24px;top:8px;z-index:10000;background:var(--panel);padding:8px 12px;border-radius:6px}
+html[data-study-page] :is(.header-avatar-wrap,.header-avatar,.header-entry-mini) :is(.v-popover-content,.avatar-panel,.header-avatar-panel,.header-entry-popover):not(.study-account-menu){visibility:hidden!important}
+html[data-study-page] .study-account-menu{visibility:visible!important;padding:16px!important;min-height:0!important;height:auto!important;max-width:min(280px,calc(100vw - 32px))!important;box-sizing:border-box}
+html[data-study-page] .study-account-menu[data-study-ready=false]{visibility:hidden!important}
+html[data-study-page] .study-account-menu :not([data-study-keep]){display:none!important}
+html[data-study-page] .study-account-menu [data-study-keep]{min-height:0!important;height:auto!important}
+.study-account-nickname{display:block!important;margin:0 0 12px!important;pointer-events:none!important;color:var(--text)!important}
+.study-account-logout{cursor:pointer}
+@media(max-width:800px){html[data-study-page] .study-native-header{grid-template-columns:90px minmax(120px,1fr) max-content!important;gap:0 12px!important;padding-inline:16px!important}html[data-study-page] .study-native-header .right-entry{margin-right:16px!important}}
