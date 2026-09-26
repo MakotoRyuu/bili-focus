@@ -150,3 +150,6 @@ html[data-study-page] .study-native-header :is(#nav-searchform,.nav-search-conte
 html[data-study-page] .study-native-header .nav-search-input{background:transparent!important;color:var(--study-text)!important}
 html[data-study-page] .study-native-header .nav-search-input::placeholder{color:var(--study-muted)!important}
 html[data-study-page] .study-native-header :is(.nav-search-btn,.nav-search-submit){color:var(--study-muted)!important}
+
+/* Remove the hover action from native search result cards. */
+html[data-study-page=search] :is(.bili-watch-later--wrap,.bili-watch-later){display:none!important}
