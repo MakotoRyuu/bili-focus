@@ -54,8 +54,18 @@
     for (const header of headers) {
       header.classList.add('study-native-header');
       if (!header.querySelector('.study-home-entry')) { const left = header.querySelector('.left-entry-main, .left-entry, .nav-con'); if (left) left.prepend(homeLink()); else header.prepend(homeLink()); }
-      updateAccount(header);
+      if (Study.route(location.href) === 'search') header.querySelector('.study-account-inline')?.remove();
+      else updateAccount(header);
     }
   }
+  // Prevent native delegated navigation from adding tracking or using its SPA router.
+  document.addEventListener('click', event => {
+    const link = event.target.closest?.('.study-home-entry');
+    if (!link) return;
+    event.stopImmediatePropagation();
+    if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+      event.preventDefault(); location.assign('https://www.bilibili.com/');
+    }
+  }, true);
   globalThis.FocusHeader = { update };
 })();

@@ -143,3 +143,6 @@ html[data-study-page] .study-native-header :is(.left-entry,.left-entry-main){pad
 html[data-study-page=search] :is(.bili-video-card__info--tit,.bili-video-card__info--tit a,.vui_tabs--nav-link,.user-name,.bili-user-card__info--name){color:var(--study-text)!important}
 html[data-study-page=search] :is(.bili-video-card__info--owner,.bili-video-card__info--author,.bili-video-card__info--date,.vui_tabs--nav-num){color:var(--study-muted)!important}
 html[data-study-page=search] :is(.vui_tabs--nav-item-active .vui_tabs--nav-link,.vui_button--tab.vui_button--active){color:var(--study-accent)!important;background:var(--study-soft)!important}
+
+/* Search uses cookie-free requests and has no account controls. */
+html[data-study-page=search] :is(.bili-header__bar,.bili-mini-header__content,.international-header .mini-header) :is(.right-entry,.right-entry__main,.study-account-inline,.header-avatar-unlogin-wrap){display:none!important}

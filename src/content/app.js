@@ -41,9 +41,8 @@
     if (kind === 'home' && !mounted?.isConnected) {
       const header = document.querySelector('.bili-header, .international-header, header');
       const target = document.querySelector('.bili-feed4-layout, .feed2, .recommended-container_floor-aside');
-      if (!header && !target) return;
       mounted = FocusUI.el('main', '', 'study-home'); mounted.id = 'study-home';
-      if (target) target.before(mounted); else header.after(mounted); ui.render(mounted);
+      if (target) target.before(mounted); else if (header) header.after(mounted); else document.body.append(mounted); ui.render(mounted);
       for (const teacher of state.teachers.filter(item => !item.avatar)) {
         if (avatarAttempts.has(teacher.id)) continue;
         avatarAttempts.add(teacher.id);
@@ -96,7 +95,7 @@
     const kind = Study.route(location.href);
     if (lastUrl !== location.href) {
       lastUrl = location.href; document.documentElement.dataset.studyPage = kind;
-      if (kind === 'home' && location.pathname !== '/') { location.replace(home); return; }
+      if (kind === 'home' && location.href !== home) { location.replace(home); return; }
       if (kind === 'teacher' && !/^\/\d+\/(?:upload|video|channel|lists)(?:\/|$)/.test(location.pathname)) {
         location.replace(`https://space.bilibili.com/${Study.teacherId(location.href)}/upload/video`); return;
       }

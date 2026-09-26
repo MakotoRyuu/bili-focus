@@ -115,6 +115,24 @@ async function main() {
   // Concurrent calls are serialized by the real worker, so neither favorite is lost.
   const results = await Promise.all(['201','202'].map(id => send({ channel: 'bili-focus', type: 'library.mutate', action: { type: 'item.save', kind: 'teacher', item: { id, name: `并发${id}`, categoryId: 'default' } } })));
   assert.ok(results.every(result => result.ok)); assert.ok(data.library.teachers.some(item => item.id === '201')); assert.ok(data.library.teachers.some(item => item.id === '202'));
+  assert.equal(await searchPage.locator('.right-entry').isVisible(), false);
+  assert.equal(await searchPage.locator('.study-account-inline').count(), 0);
+  await searchPage.evaluate(() => {
+    document.querySelector('.study-home-entry').href = 'https://www.bilibili.com/?spm_id_from=333.337.0.0';
+    document.querySelector('.left-entry').addEventListener('click', event => {
+      event.preventDefault(); window.nativeNavigationIntercepted = true;
+    });
+  });
+  await searchPage.locator('.study-home-entry').click();
+  await searchPage.waitForURL('https://www.bilibili.com/');
+  await searchPage.locator('.study-home').waitFor();
+  const trackedHome = await open('https://www.bilibili.com/?spm_id_from=333.337.0.0');
+  await trackedHome.waitForURL('https://www.bilibili.com/');
+  await trackedHome.locator('.study-home').waitFor();
+  // Homepage still mounts when native markup is absent or removed during hydration.
+  await trackedHome.evaluate(() => document.body.replaceChildren());
+  await trackedHome.locator('.study-home').waitFor();
+  assert.equal(await trackedHome.locator('[data-collection]').count(), 2);
   console.log('Browser integration passed: migration, header/menu, category invariants/cascade, teacher toggle/artwork, manual courses/cover, playback P, failure handling, concurrent writes and cross-tab sync.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await browser?.close(); });
