@@ -65,6 +65,14 @@
       }
       state[items] = state[items].filter(entry => entry !== previous);
       state[items].push(saved);
+    } else if (action.type === 'item.edit') {
+      const item = state[items].find(entry => entry.id === action.id);
+      if (!item) throw new Error('收藏已被删除，请刷新后重试。');
+      const name = String(action.name || '').trim();
+      if (!name) throw new Error('名称不能为空。');
+      if (!state[categories].some(category => category.id === action.categoryId)) throw new Error('请选择有效分类。');
+      item.name = name.slice(0, kind === 'teacher' ? 40 : 100);
+      item.categoryId = action.categoryId;
     } else if (action.type === 'item.remove') {
       state[items] = state[items].filter(item => item.id !== action.id);
     } else if (action.type === 'teacher.avatar' && kind === 'teacher') {

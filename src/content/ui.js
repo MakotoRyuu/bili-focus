@@ -61,25 +61,49 @@
         return () => mutate({ type: 'category.remove', kind, id: category.id });
       }, '删除分类及收藏');
     }
-    function addItem(kind, teacher = null) {
-      const isTeacher = kind === 'teacher';
-      return dialog(teacher ? '填写老师昵称' : `添加${labels[kind]}`, form => {
-        const url = el('input'); url.required = true; url.placeholder = isTeacher ? 'https://space.bilibili.com/… 或 UID' : 'https://www.bilibili.com/video/BV…';
-        if (!teacher) field(form, isTeacher ? '主页链接或 UID' : '课程链接', url);
-        const name = el('input'); name.maxLength = isTeacher ? 40 : 100; name.required = isTeacher; name.value = teacher?.name || '';
-        field(form, isTeacher ? '昵称' : '课程名称（可选，默认使用视频标题）', name);
-        const category = el('select'); category.required = true;
-        const placeholder = el('option', '请选择分类'); placeholder.value = ''; placeholder.disabled = true; placeholder.selected = true; category.append(placeholder);
-        for (const item of getState()[`${kind}Categories`]) { const option = el('option', item.name); option.value = item.id; category.append(option); }
-        field(form, '分类', category);
-        form.append(el('p', '可先在首页「添加分类」中创建新的分类。', 'study-help'));
+    function categoryField(form, kind, selected = '') {
+      const category = el('select'); category.required = true;
+      const placeholder = el('option', '请选择分类'); placeholder.value = ''; placeholder.disabled = true; category.append(placeholder);
+      for (const item of getState()[`${kind}Categories`]) { const option = el('option', item.name); option.value = item.id; category.append(option); }
+      category.value = selected; field(form, '分类', category); return category;
+    }
+    function addItem(kind, teacher = null, unified = false) {
+      return dialog(teacher ? '填写老师昵称' : '添加收藏', form => {
+        const body = el('div'); let url, name, category;
+        if (unified) {
+          const type = el('select');
+          for (const value of ['teacher', 'course']) { const option = el('option', labels[value]); option.value = value; type.append(option); }
+          type.value = kind; field(form, '收藏类型', type);
+          type.onchange = () => { kind = type.value; renderFields(); };
+        }
+        form.append(body);
+        function renderFields() {
+          body.replaceChildren(); const isTeacher = kind === 'teacher';
+          url = el('input'); url.required = true; url.placeholder = isTeacher ? 'https://space.bilibili.com/… 或 UID' : 'https://www.bilibili.com/video/BV…';
+          if (!teacher) field(body, isTeacher ? '主页链接或 UID' : '课程链接', url);
+          name = el('input'); name.maxLength = isTeacher ? 40 : 100; name.required = isTeacher; name.value = teacher?.name || '';
+          field(body, isTeacher ? '昵称' : '课程名称（可选，默认使用视频标题）', name);
+          category = categoryField(body, kind);
+          body.append(el('p', '可先在首页「添加分类」中创建新的分类。', 'study-help'));
+        }
+        renderFields();
         return async () => {
-          if (!category.value) throw new Error('请选择分类。');
-          if (isTeacher && !name.value.trim()) throw new Error('昵称不能只包含空格。');
-          const data = teacher || await metadata(kind, url.value);
-          await mutate({ type: 'item.save', kind, item: { ...data, name: name.value.trim() || data.name, categoryId: category.value } });
+          // Snapshot before awaiting metadata; changing the form cannot change an in-flight save.
+          const savingKind = kind, categoryId = category.value, enteredName = name.value.trim(), enteredUrl = url.value;
+          if (!categoryId) throw new Error('请选择分类。');
+          if (savingKind === 'teacher' && !enteredName) throw new Error('昵称不能只包含空格。');
+          const data = teacher || await metadata(savingKind, enteredUrl);
+          await mutate({ type: 'item.save', kind: savingKind, item: { ...data, name: enteredName || data.name, categoryId } });
         };
       }, '确认收藏');
+    }
+    function editItem(kind, item) {
+      dialog(`编辑${labels[kind]}`, form => {
+        const name = el('input'); name.required = true; name.maxLength = kind === 'teacher' ? 40 : 100; name.value = item.name;
+        field(form, kind === 'teacher' ? '昵称' : '课程名称', name);
+        const category = categoryField(form, kind, item.categoryId);
+        return () => mutate({ type: 'item.edit', kind, id: item.id, name: name.value, categoryId: category.value });
+      }, '保存修改');
     }
     function settings() {
       const wrap = el('div', '', 'study-settings'); const { palette, theme } = getAppearance();
@@ -103,7 +127,8 @@
       const detail = teacher ? '查看投稿与合集' : item.pageCount > 1 ? (item.lastPage ? `上次看到第 ${item.lastPage} P · 共 ${item.pageCount} P` : `尚未开始 · 共 ${item.pageCount} P`) : '打开课程';
       link.append(el('span', detail, 'study-card-detail'));
       const remove = button('移除', async () => { try { await mutate({ type: 'item.remove', kind, id: item.id }); } catch (e) { notice(e.message); } }, 'study-remove');
-      remove.setAttribute('aria-label', `移除${labels[kind]} ${item.name}`); node.append(link, remove); return node;
+      const edit = button('⚙', () => editItem(kind, item), 'study-edit'); edit.setAttribute('aria-label', `编辑${labels[kind]} ${item.name}`); edit.title = '编辑名称和分类';
+      remove.setAttribute('aria-label', `移除${labels[kind]} ${item.name}`); node.append(link, edit, remove); return node;
     }
     function render(root) {
       root.replaceChildren();
@@ -111,7 +136,9 @@
         const state = getState(), section = el('section', '', 'study-section'); section.dataset.collection = kind;
         const heading = el('div', '', 'study-heading'); heading.append(el('h2', kind === 'teacher' ? '我的老师' : '我的课程'));
         if (kind === 'teacher') heading.append(settings());
-        heading.append(button('添加分类', () => addCategory(kind), 'study-secondary'), button(`添加${labels[kind]}`, () => addItem(kind), 'study-primary')); section.append(heading);
+        heading.append(button('添加分类', () => addCategory(kind), 'study-secondary'));
+        if (kind === 'teacher') heading.append(button('添加收藏', () => addItem('teacher', null, true), 'study-primary'));
+        section.append(heading);
         for (const category of state[`${kind}Categories`]) {
           const group = el('section', '', 'study-category'); group.dataset.category = category.id;
           const separator = el('div', '', 'study-category-heading'); separator.append(el('h3', category.name), el('span', '', 'study-divider'));

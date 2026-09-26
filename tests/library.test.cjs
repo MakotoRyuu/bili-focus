@@ -53,3 +53,16 @@ test('teacher toggle removal and re-add do not create duplicates', () => {
   state = add(state, { type: 'item.remove', kind: 'teacher', id: '123' });
   assert.equal(state.teachers.length, 0);
 });
+test('editing changes only name/category and cannot revive a deleted favorite', () => {
+  let state = Library.normalize();
+  state = add(state, { type: 'category.add', kind: 'course', id: 'math', name: '数学' });
+  state = add(state, { type: 'item.save', kind: 'course', item: { id: 'BV1GJ411x7h7', name: '旧名字', categoryId: 'default', pageCount: 5, cover: 'https://i0.hdslb.com/cover.jpg' } });
+  state = add(state, { type: 'course.progress', kind: 'course', id: 'BV1GJ411x7h7', page: 3 });
+  state = add(state, { type: 'item.edit', kind: 'course', id: 'BV1GJ411x7h7', name: ' 新名字 ', categoryId: 'math' });
+  assert.equal(state.courses[0].name, '新名字'); assert.equal(state.courses[0].categoryId, 'math');
+  assert.equal(state.courses[0].lastPage, 3); assert.equal(state.courses[0].cover, 'https://i0.hdslb.com/cover.jpg');
+  assert.throws(() => add(state, { type: 'item.edit', kind: 'course', id: 'BV1GJ411x7h7', name: ' ', categoryId: 'math' }), /不能为空/);
+  assert.throws(() => add(state, { type: 'item.edit', kind: 'course', id: 'BV1GJ411x7h7', name: '新', categoryId: 'gone' }), /分类/);
+  state = add(state, { type: 'item.remove', kind: 'course', id: 'BV1GJ411x7h7' });
+  assert.throws(() => add(state, { type: 'item.edit', kind: 'course', id: 'BV1GJ411x7h7', name: '新', categoryId: 'math' }), /已被删除/);
+});
