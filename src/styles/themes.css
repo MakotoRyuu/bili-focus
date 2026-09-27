@@ -1,5 +1,5 @@
 /* Complete palettes; accent ink stays readable on tinted surfaces. */
-:root{color-scheme:light;--study-bg:#f8f9f6;--study-panel:#fff;--study-text:#25332d;--study-muted:#6a796e;--study-line:#e4e9e2;--study-accent:#477b5d;--study-button:#477b5d;--study-on-button:#fff;--study-soft:#eaf1e9;--study-sidebar:#f0f3ed}
+:root[data-study-page]{color-scheme:light;--study-bg:#f8f9f6;--study-panel:#fff;--study-text:#25332d;--study-muted:#6a796e;--study-line:#e4e9e2;--study-accent:#477b5d;--study-button:#477b5d;--study-on-button:#fff;--study-soft:#eaf1e9;--study-sidebar:#f0f3ed}
 :root[data-study-palette=blue]{--study-bg:#f5fbfe;--study-panel:#fff;--study-text:#203440;--study-muted:#617985;--study-line:#dbeaf1;--study-accent:#007ca9;--study-button:#00aeec;--study-on-button:#073447;--study-soft:#e1f4fc;--study-sidebar:#edf7fc}
 :root[data-study-palette=pink]{--study-bg:#fff8fa;--study-panel:#fff;--study-text:#402b33;--study-muted:#826571;--study-line:#f0dfe5;--study-accent:#b83f64;--study-button:#fb7299;--study-on-button:#4e1528;--study-soft:#ffe7ee;--study-sidebar:#fff0f5}
 :root[data-study-appearance=dark]{color-scheme:dark;--study-bg:#171e1a;--study-panel:#202a23;--study-text:#e1e9df;--study-muted:#a0aea2;--study-line:#354238;--study-accent:#a0c6a6;--study-button:#a0c6a6;--study-on-button:#17251b;--study-soft:#2e4032;--study-sidebar:#1c251f}

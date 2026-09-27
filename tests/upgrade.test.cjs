@@ -32,7 +32,7 @@ test('updated toolbar action opens the native homepage, not a retired extension 
   let click; const opened = [];
   vm.runInNewContext(fs.readFileSync(path.join(root, 'src/background/worker.js'), 'utf8'), {
     importScripts: () => {},
-    chrome: { runtime: { onMessage: { addListener: () => {} } }, action: { onClicked: { addListener: handler => { click = handler; } } }, tabs: { create: data => opened.push(data.url) } }
+    chrome: { runtime: { onMessage: { addListener: () => {} } }, action: { onClicked: { addListener: handler => { click = handler; } } }, tabs: { create: data => opened.push(data.url) }, storage: { local: { get: async () => ({ focusMode: true }) }, onChanged: { addListener: () => {} } }, declarativeNetRequest: { updateEnabledRulesets: async () => {} } }
   });
   click();
   assert.deepEqual(opened, ['https://www.bilibili.com/']);

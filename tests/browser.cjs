@@ -2,7 +2,7 @@
 const { chromium } = require('playwright');
 const fs = require('node:fs'); const path = require('node:path'); const vm = require('node:vm'); const assert = require('node:assert/strict'); const { webcrypto } = require('node:crypto');
 const root = path.join(__dirname, '..'); const manifest = require('../manifest.json');
-let data = { teachers: [{ id: '7', name: '原有昵称' }], palette: 'blue', theme: 'light' }, messageHandler, browser, context, networkFails = false;
+let data = { teachers: [{ id: '7', name: '原有昵称' }], palette: 'blue', theme: 'light' }, messageHandler, browser, context, networkFails = false, failNextLibraryRead = false;
 const clone = value => structuredClone(value);
 async function get(keys) {
   if (Array.isArray(keys)) return Object.fromEntries(keys.filter(key => key in data).map(key => [key, clone(data[key])]));
@@ -15,7 +15,7 @@ async function set(update) {
   if (context) await Promise.all(context.pages().map(page => page.evaluate(changes => window.__notify?.(changes), changes).catch(() => {})));
 }
 const worker = vm.createContext({ console, structuredClone, URL, AbortSignal, crypto: webcrypto,
-  chrome: { runtime: { id: 'test', onMessage: { addListener: fn => { messageHandler = fn; } } }, action: { onClicked: { addListener() {} } }, tabs: { create() {} }, storage: { local: { get, set } } },
+  chrome: { runtime: { id: 'test', onMessage: { addListener: fn => { messageHandler = fn; } } }, action: { onClicked: { addListener() {} } }, tabs: { create() {} }, storage: { local: { get, set }, onChanged: { addListener() {} } }, declarativeNetRequest: { updateEnabledRulesets: async () => {} } },
   fetch: async url => {
     if (networkFails) throw new Error('offline');
     return { ok: true, json: async () => ({ code: 0, data: url.includes('/card?') ? { card: { name: '真实账号名', face: 'https://i0.hdslb.com/avatar.png' } } : url.includes('/pugv/view/web/season?') ? {
@@ -26,16 +26,43 @@ const worker = vm.createContext({ console, structuredClone, URL, AbortSignal, cr
 });
 worker.importScripts = (...files) => files.forEach(file => vm.runInContext(fs.readFileSync(path.resolve(root, 'src/background', file), 'utf8'), worker));
 vm.runInContext(fs.readFileSync(path.join(root, manifest.background.service_worker), 'utf8'), worker);
-const send = message => new Promise(resolve => messageHandler(message, { id: 'test' }, resolve));
+const send = message => {
+  if (message.type === 'library.read' && failNextLibraryRead) {
+    failNextLibraryRead = false;
+    return Promise.resolve({ ok: false, error: 'temporary worker failure' });
+  }
+  return new Promise(resolve => messageHandler(message, { id: 'test' }, resolve));
+};
 const header = `<div class="bili-header"><div class="bili-header__bar"><div class="left-entry"><div class="left-entry-main"><a class="home-page-entry" href="https://www.bilibili.com/">首页</a></div></div><div class="center-search-container"><form id="nav-searchform"><input class="nav-search-input"><button class="nav-search-btn">搜索</button></form></div><div class="right-entry"><div class="right-entry__main"><div class="header-avatar-wrap"><a class="avatar-trigger" href="https://space.bilibili.com/999">头像</a><div class="v-popover-content"><div class="avatar-panel" style="width:320px;padding:40px;transform:translateX(60px);background:red"><a class="nickname" href="https://space.bilibili.com/999">我的昵称</a><div class="stats">数据与硬币</div><div class="recommend-services">推荐服务</div><button class="logout" onclick="window.logoutClicked=true">退出登录</button></div></div></div></div></div></div></div>`;
 function fixture(url) {
   const searching = url.includes('search.bilibili.com'); const teacher = url.includes('space.bilibili.com'); const video = url.includes('/video/') || url.includes('/cheese/play/');
-  return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;font:14px sans-serif}.bili-header__bar{height:64px;padding:0 32px;box-sizing:border-box;display:flex;justify-content:space-between}#nav-searchform{display:flex}input{min-width:0;flex:1}.header-avatar-wrap{position:relative}.avatar-trigger{display:block;width:36px;height:36px}.header-avatar-wrap:hover .avatar-trigger{transform:scale(2) translateY(18px)}.v-popover-content{display:none;position:absolute;top:100%;right:0;width:240px;background:white;box-shadow:0 3px 15px #ccc}.header-avatar-wrap:hover .v-popover-content{display:block}.upinfo{margin:24px}.upinfo-avatar img{width:64px;height:64px}.nickname{display:block}.bili-feed4-layout{height:400px}</style></head><body>${header}${searching ? '<div class=search-tabs>视频 / 用户</div><div class=video-list><article class=bili-video-card style="--text:#18191c"><h3 class=bili-video-card__info--tit>视频结果</h3></article></div>' : teacher ? '<div class="upinfo header-upinfo"><div class="upinfo-avatar"><img src="https://i0.hdslb.com/avatar.png"></div><div class="upinfo-detail"><div class="nickname">页面老师名</div></div><div class="operations">关注 / 举报 / 加入黑名单</div></div><a href="/123/pugv">课堂</a>' : video ? '<video></video>' : '<div class="bili-feed4-layout">推荐流</div>'}</body></html>`;
+  const siteHeader = searching || teacher || video ? header : `<div class="bili-feed4">${header}`;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;font:14px sans-serif}.bili-header__bar{height:64px;padding:0 32px;box-sizing:border-box;display:flex;justify-content:space-between}#nav-searchform{display:flex}input{min-width:0;flex:1}.header-avatar-wrap{position:relative}.avatar-trigger{display:block;width:36px;height:36px}.header-avatar-wrap:hover .avatar-trigger{transform:scale(2) translateY(18px)}.v-popover-content{display:none;position:absolute;top:100%;right:0;width:240px;background:white;box-shadow:0 3px 15px #ccc}.header-avatar-wrap:hover .v-popover-content{display:block}.upinfo{margin:24px}.upinfo-avatar img{width:64px;height:64px}.nickname{display:block}.bili-feed4-layout{height:400px}</style></head><body>${siteHeader}${searching ? '<div class=search-tabs>视频 / 用户</div><div class=video-list><article class=bili-video-card style="--text:#18191c"><h3 class=bili-video-card__info--tit>视频结果</h3></article></div>' : teacher ? '<div class="upinfo header-upinfo"><div class="upinfo-avatar"><img src="https://i0.hdslb.com/avatar.png"></div><div class="upinfo-detail"><div class="nickname">页面老师名</div></div><div class="operations">关注 / 举报 / 加入黑名单</div></div><a href="/123/pugv">课堂</a>' : video ? '<video></video>' : '<div class="bili-feed4-layout">推荐流</div></div>'}</body></html>`;
 }
 async function open(url) {
   const page = await context.newPage(); await page.goto(url);
-  for (const file of manifest.content_scripts[0].css) await page.addStyleTag({ path: path.join(root, file) });
+  if (url === 'https://www.bilibili.com/' && data.focusMode !== false) {
+    await page.waitForFunction(() => performance.getEntriesByType('navigation')[0]?.type === 'reload');
+  }
+  for (const file of manifest.content_scripts[0].css) {
+    for (;;) {
+      try { await page.addStyleTag({ path: path.join(root, file) }); break; }
+      catch (error) {
+        if (!/Execution context was destroyed/.test(error.message)) throw error;
+        await page.waitForLoadState('domcontentloaded');
+      }
+    }
+  }
   return page;
+}
+async function assertHomePlacement(page) {
+  const layout = await page.evaluate(() => {
+    const header = document.querySelector('.bili-header');
+    const home = document.querySelector('.study-home');
+    return { adjacent: header?.nextElementSibling === home, gap: home?.getBoundingClientRect().top - header?.getBoundingClientRect().bottom };
+  });
+  assert.equal(layout.adjacent, true);
+  assert.ok(layout.gap >= 0 && layout.gap < 100, `library sits too far below the header: ${layout.gap}px`);
 }
 async function main() {
   browser = await chromium.launch({ channel: 'chrome', headless: true }); context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
@@ -49,10 +76,31 @@ async function main() {
   await context.route('https://i0.hdslb.com/**', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#00aeec"/></svg>' }));
   await context.route('https://archive.biliimg.com/**', route => route.fulfill({ contentType: 'image/svg+xml', body: '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><rect width="320" height="180" fill="#00aeec"/></svg>' }));
   const page = await open('https://www.bilibili.com/'); await page.locator('.study-home').waitFor();
+  await assertHomePlacement(page);
+  await page.evaluate(() => document.querySelector('.bili-feed4-layout').append(document.querySelector('.study-home')));
+  await page.waitForFunction(() => document.querySelector('.bili-header')?.nextElementSibling?.id === 'study-home');
+  await assertHomePlacement(page);
+  async function assertModeButtonStyle() {
+    const layout = await page.locator('.center-search-container').evaluate(search => {
+      const button = search.querySelector('.study-mode-toggle');
+      const form = search.querySelector('#nav-searchform');
+      const bounds = button.getBoundingClientRect(), formBounds = form.getBoundingClientRect();
+      const style = getComputedStyle(button);
+      return { first: search.firstElementChild === button, gap: formBounds.left - bounds.right, background: style.backgroundColor, color: style.color,
+        searchWidth: search.getBoundingClientRect().width, buttonWidth: bounds.width, formWidth: formBounds.width,
+        searchDisplay: getComputedStyle(search).display, formFlex: getComputedStyle(form).flex, formPosition: getComputedStyle(form).position };
+    });
+    assert.equal(layout.first, true);
+    assert.ok(layout.gap >= 0 && layout.gap <= 6, `mode button layout: ${JSON.stringify(layout)}`);
+    assert.equal(layout.background, 'rgb(255, 255, 255)');
+    assert.equal(layout.color, 'rgb(24, 25, 28)');
+  }
+  await assertModeButtonStyle();
   assert.equal(await page.locator('.study-teacher .study-card-name').innerText(), '原有昵称');
   assert.equal(await page.locator('#study-status').count(), 0);
   for (const width of [1440, 2200, 760]) {
     await page.setViewportSize({width,height:1000});
+    await assertModeButtonStyle();
     const icon = await page.locator('.study-home-entry').first().boundingBox();
     const heading = await page.locator('.study-heading h2').first().boundingBox();
     assert.ok(Math.abs(icon.x-heading.x)<1, `home alignment at ${width}: ${icon.x}/${heading.x}`);
@@ -171,11 +219,14 @@ async function main() {
   await searchPage.waitForURL('https://www.bilibili.com/');
   await searchPage.locator('.study-home').waitFor();
   await searchPage.waitForFunction(() => performance.getEntriesByType('navigation')[0]?.type === 'reload');
+  await searchPage.locator('.study-home').waitFor({ state: 'visible' });
+  await assertHomePlacement(searchPage);
   await searchPage.waitForTimeout(900);
   assert.equal(homeLoads, 2, 'one homepage navigation followed by exactly one reload');
   assert.equal(searchPage.url(), 'https://www.bilibili.com/');
   await searchPage.locator('.study-home-entry').click();
   await searchPage.waitForTimeout(1200);
+  await searchPage.locator('.study-home').waitFor({ state: 'visible' });
   assert.equal(homeLoads, 3, 'clicking from home causes one reload');
   assert.equal(searchPage.url(), 'https://www.bilibili.com/');
   const trackedHome = await open('https://www.bilibili.com/?spm_id_from=333.337.0.0');
@@ -202,6 +253,30 @@ async function main() {
   const restoredHome = await open('https://www.bilibili.com/');
   await restoredHome.waitForFunction(() => document.querySelector('.study-course img[src="https://archive.biliimg.com/cheese.jpg"]'));
   assert.equal(data.library.courses.find(item => item.id === 'ss4372').pageCount, 2);
+  assert.equal(await page.getByRole('button', { name: '切换到正常 B站模式' }).count(), 1);
+  page.once('dialog', dialog => dialog.dismiss());
+  await page.getByRole('button', { name: '切换到正常 B站模式' }).click();
+  assert.notEqual(data.focusMode, false);
+  page.once('dialog', dialog => dialog.accept());
+  await page.getByRole('button', { name: '切换到正常 B站模式' }).click();
+  await page.getByRole('button', { name: '切换到专注模式' }).waitFor();
+  for (const file of manifest.content_scripts[0].css) await page.addStyleTag({ path: path.join(root, file) });
+  await assertModeButtonStyle();
+  assert.equal(data.focusMode, false);
+  assert.equal(await page.locator('.study-home').count(), 0);
+  assert.equal(await page.locator('.bili-feed4-layout').isVisible(), true);
+  assert.equal(await page.locator('html').getAttribute('data-study-page'), null);
+  const normalTeacher = await open('https://space.bilibili.com/123/');
+  assert.equal(normalTeacher.url(), 'https://space.bilibili.com/123/');
+  assert.equal(await normalTeacher.locator('#study-save-teacher').count(), 0);
+  failNextLibraryRead = true;
+  await page.getByRole('button', { name: '切换到专注模式' }).click();
+  await page.locator('.study-home').waitFor();
+  assert.equal(failNextLibraryRead, false);
+  await assertHomePlacement(page);
+  for (const file of manifest.content_scripts[0].css) await page.addStyleTag({ path: path.join(root, file) });
+  await assertModeButtonStyle();
+  assert.equal(data.focusMode, true);
   console.log('Browser integration passed: migration, header/menu, category invariants/cascade, teacher toggle/artwork, manual courses/cover, playback P, failure handling, concurrent writes and cross-tab sync.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await browser?.close(); });

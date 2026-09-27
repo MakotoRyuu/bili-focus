@@ -1,7 +1,7 @@
 (() => {
   const home = 'https://www.bilibili.com/';
   let state = Library.normalize(), loaded = false, lastUrl = '', mounted = null;
-  let palette = 'blue', appearance = 'system';
+  let palette = 'blue', appearance = 'system', focusMode = true, modeReady = false;
   const avatarAttempts = new Set();
   const classroomCoverAttempts = new Set();
   let lastProgress = '', progressBusy = false;
@@ -25,6 +25,11 @@
   });
   function applyAppearance() {
     if (!document.documentElement) return;
+    if (!focusMode || !modeReady || !loaded) {
+      delete document.documentElement.dataset.studyPalette;
+      delete document.documentElement.dataset.studyAppearance;
+      return;
+    }
     document.documentElement.dataset.studyPalette = palette;
     document.documentElement.dataset.studyAppearance = appearance;
   }
@@ -41,10 +46,8 @@
   function mount(kind) {
     if (!document.body || !loaded) return;
     if (kind === 'home' && !mounted?.isConnected) {
-      const header = document.querySelector('.bili-header, .international-header, header');
-      const target = document.querySelector('.bili-feed4-layout, .feed2, .recommended-container_floor-aside');
       mounted = FocusUI.el('main', '', 'study-home'); mounted.id = 'study-home';
-      if (target) target.before(mounted); else if (header) header.after(mounted); else document.body.append(mounted); ui.render(mounted);
+      document.body.prepend(mounted); ui.render(mounted);
       for (const teacher of state.teachers.filter(item => !item.avatar)) {
         if (avatarAttempts.has(teacher.id)) continue;
         avatarAttempts.add(teacher.id);
@@ -61,11 +64,12 @@
           .catch(() => {}); // Keep the existing card when B站 artwork is unavailable.
       }
     }
-    // The native header can arrive after our body fallback or be replaced by hydration.
-    // Reconcile order even when the library is already mounted.
+    // Place the library immediately after the visible header, inside its page wrapper.
+    // Putting it after the wrapper leaves a viewport-sized blank area above the library.
     if (kind === 'home' && mounted?.isConnected) {
       const header = document.querySelector('.bili-header, .international-header, header');
-      if (header && !header.contains(mounted) && header.nextElementSibling !== mounted) header.after(mounted);
+      if (header && header.nextElementSibling !== mounted) header.after(mounted);
+      else if (!header && mounted.parentElement !== document.body) document.body.prepend(mounted);
     }
     if (kind === 'teacher') {
       if (!document.querySelector('#study-save-teacher')) {
@@ -121,12 +125,15 @@
       .catch(e => FocusUI.notice(e.message)).finally(() => { progressBusy = false; });
   }
   function update() {
-    if (!document.documentElement) return;
+    if (!document.documentElement || !modeReady) return;
+    FocusHeader.modeSwitch(focusMode, toggleMode);
+    if (!focusMode || !loaded) return;
     applyAppearance();
     const kind = Study.route(location.href);
     if (lastUrl !== location.href) {
       lastUrl = location.href; document.documentElement.dataset.studyPage = kind;
       if (kind === 'home' && location.href !== home) { location.replace(home); return; }
+      if (kind === 'home' && FocusHeader.refreshHomeOnce()) return;
       if (kind === 'teacher' && !/^\/\d+\/(?:upload|video|channel|lists|pugv)(?:\/|$)/.test(location.pathname)) {
         location.replace(`https://space.bilibili.com/${Study.teacherId(location.href)}/upload/video`); return;
       }
@@ -139,7 +146,13 @@
     }
     if (kind === 'video' || kind === 'cheese') captureProgress();
   }
+  async function toggleMode() {
+    if (focusMode && !confirm('确定退出专注模式，切换到正常 B站吗？娱乐推荐、评论和弹幕将重新显示。')) return;
+    try { await rpc('mode.set', { focusMode: !focusMode }); }
+    catch (error) { FocusUI.notice(error.message || '模式切换失败，请重试。'); }
+  }
   function search(event) {
+    if (!focusMode || !modeReady) return;
     const target = event.target;
     const container = target.closest?.('#nav-searchform, .nav-search, .nav-search-container, .search-input, .search-input-wrap, .search-form');
     if (!container) return;
@@ -150,23 +163,32 @@
   }
   for (const type of ['submit','keydown','click']) document.addEventListener(type, search, true);
   document.addEventListener('keydown', event => {
+    if (!focusMode || !modeReady) return;
     if (['video','cheese'].includes(Study.route(location.href)) && event.key.toLowerCase() === 'd' && !event.target.closest?.('input,textarea,[contenteditable=true]')) { event.preventDefault(); event.stopImmediatePropagation(); }
   }, true);
-  document.addEventListener('timeupdate', captureProgress, true);
+  document.addEventListener('timeupdate', () => { if (focusMode && modeReady) captureProgress(); }, true);
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
+    if (changes.focusMode && modeReady && (changes.focusMode.newValue !== false) !== focusMode) { location.reload(); return; }
     if (changes.library) { state = Library.normalize({ library: changes.library.newValue }); skippedClassroomEpisodes.clear(); refresh(); }
     if (changes.palette) palette = changes.palette.newValue || 'blue';
     if (changes.theme) appearance = changes.theme.newValue || 'system';
     if (changes.palette || changes.theme) { applyAppearance(); refresh(); }
   });
-  Promise.all([rpc('library.read'), chrome.storage.local.get({ palette: 'blue', theme: 'system' })]).then(([library, prefs]) => {
-    state = library; palette = prefs.palette; appearance = prefs.theme; loaded = true; applyAppearance(); update();
+  chrome.storage.local.get({ palette: 'blue', theme: 'system', focusMode: true }).then(async prefs => {
+    focusMode = prefs.focusMode !== false; modeReady = true;
+    palette = prefs.palette; appearance = prefs.theme;
+    if (focusMode) {
+      state = Library.normalize(await chrome.storage.local.get(['library', 'teachers', 'courses']));
+      loaded = true;
+      // A delayed or failed service worker must not leave the homepage empty.
+      rpc('library.read').catch(() => {});
+    }
+    applyAppearance(); update();
   }).catch(error => {
     const show = () => FocusUI.notice(error.message);
     if (document.body) show(); else document.addEventListener('DOMContentLoaded', show, { once: true });
   });
-  if (document.documentElement) applyAppearance();
   update(); document.addEventListener('DOMContentLoaded', update, { once: true });
   setInterval(update, 400);
 })();

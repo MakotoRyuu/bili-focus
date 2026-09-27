@@ -26,5 +26,22 @@ let context, server;
   const page = await context.newPage(); await page.goto(`https://search.bilibili.com:${port}/video?keyword=math`);
   await page.evaluate(port=>fetch(`https://api.bilibili.com:${port}/x/web-interface/nav?fromSearch=1`,{credentials:'include',mode:'no-cors'}).then(()=>{}),port);
   assert.equal(requests.findLast(item=>item.url==='/x/web-interface/nav?fromSearch=1').cookie,'');
+  await worker.evaluate(async () => {
+    await chrome.storage.local.set({ focusMode: false });
+    for (let i = 0; i < 30; i++) {
+      if (!(await chrome.declarativeNetRequest.getEnabledRulesets()).includes('search_privacy')) return;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    throw new Error('Normal mode did not restore the native search request rules');
+  });
+  assert.match((await visit('search.bilibili.com','/video?keyword=normal')).cookie,/focus_test=synthetic-only/);
+  await worker.evaluate(async () => {
+    await chrome.storage.local.set({ focusMode: true });
+    for (let i = 0; i < 30; i++) {
+      if ((await chrome.declarativeNetRequest.getEnabledRulesets()).includes('search_privacy')) return;
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    throw new Error('Focus mode did not restore the search privacy rules');
+  });
   console.log('Wire-level privacy passed: search page/API/search-origin requests carry no Cookie; account and playback requests retain login cookies.');
 })().catch(error=>{console.error(error);process.exitCode=1}).finally(async()=>{await context?.close();if(server)await new Promise(resolve=>server.close(resolve));fs.rmSync(temp,{recursive:true,force:true});});

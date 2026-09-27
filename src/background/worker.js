@@ -1,5 +1,21 @@
 importScripts('../core/shared.js', '../core/library.js');
 chrome.action.onClicked.addListener(() => chrome.tabs.create({ url: 'https://www.bilibili.com/' }));
+let privacyUpdate = Promise.resolve();
+function syncSearchPrivacy(focused) {
+  const next = privacyUpdate.then(async () => {
+    const focusMode = focused ?? (await chrome.storage.local.get({ focusMode: true })).focusMode;
+    await chrome.declarativeNetRequest.updateEnabledRulesets({
+      enableRulesetIds: focusMode ? ['search_privacy'] : [],
+      disableRulesetIds: focusMode ? [] : ['search_privacy']
+    });
+  });
+  privacyUpdate = next.catch(() => {});
+  return next;
+}
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.focusMode) syncSearchPrivacy().catch(console.error);
+});
+syncSearchPrivacy().catch(console.error);
 let pending = Promise.resolve();
 function transaction(work) {
   const next = pending.then(work);
@@ -65,7 +81,12 @@ async function metadata(message) {
 }
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
   if (sender.id !== chrome.runtime.id || message?.channel !== 'bili-focus') return;
-  const work = message.type === 'metadata' ? metadata(message) : transaction(async () => {
+  const work = message.type === 'metadata' ? metadata(message) : message.type === 'mode.set' ? transaction(async () => {
+    if (typeof message.focusMode !== 'boolean') throw new Error('无效的模式。');
+    await syncSearchPrivacy(message.focusMode);
+    await chrome.storage.local.set({ focusMode: message.focusMode });
+    return message.focusMode;
+  }) : transaction(async () => {
     const state = await readLibrary();
     if (message.type === 'library.read') return state;
     if (message.type !== 'library.mutate') throw new Error('不支持的请求。');

@@ -1,9 +1,13 @@
 (() => {
   const home = 'https://www.bilibili.com/';
   const navigationType = performance.getEntriesByType('navigation')[0]?.type;
-  if (location.href === home && ['navigate', 'back_forward'].includes(navigationType)) {
-    // A full reload has navigationType === 'reload', so it cannot trigger itself again.
-    location.reload();
+  function refreshHomeOnce() {
+    if (location.href === home && ['navigate', 'back_forward'].includes(navigationType)) {
+      // A full reload has navigationType === 'reload', so it cannot trigger itself again.
+      location.reload();
+      return true;
+    }
+    return false;
   }
   const headerSelector = '.bili-header__bar, .bili-mini-header__content, .international-header .mini-header';
   const primed = new WeakSet();
@@ -64,6 +68,20 @@
       else updateAccount(header);
     }
   }
+  function modeSwitch(focused, toggle) {
+    for (const search of document.querySelectorAll('.center-search-container, .nav-search-container')) {
+      if (!search.querySelector('input')) continue;
+      let button = search.querySelector('.study-mode-toggle');
+      if (!button) {
+        button = document.createElement('button'); button.type = 'button'; button.className = 'study-mode-toggle';
+        search.prepend(button);
+      }
+      button.textContent = focused ? '退出专注' : '开启专注';
+      button.title = focused ? '切换到正常 B站模式' : '切换到专注模式';
+      button.setAttribute('aria-label', button.title);
+      button.onclick = toggle;
+    }
+  }
   // Prevent native delegated navigation from adding tracking or using its SPA router.
   document.addEventListener('click', event => {
     const link = event.target.closest?.('.study-home-entry');
@@ -76,5 +94,5 @@
       else location.assign(home);
     }
   }, true);
-  globalThis.FocusHeader = { update };
+  globalThis.FocusHeader = { update, modeSwitch, refreshHomeOnce };
 })();

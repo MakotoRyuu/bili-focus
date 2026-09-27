@@ -29,6 +29,11 @@ html[data-study-page=home] .bili-feed4{background:var(--study-bg)!important;min-
 
 
 /* Original search centered, text-only account controls aligned to the right. */
+.center-search-container:has(> .study-mode-toggle),.nav-search-container:has(> .study-mode-toggle){display:flex!important;align-items:center;gap:4px}
+.center-search-container > :not(.study-mode-toggle),.nav-search-container > :not(.study-mode-toggle){min-width:0;flex:1}
+.study-mode-toggle{flex:none;border:1px solid #d8dce0!important;border-radius:6px;background:#fff!important;color:#18191c!important;padding:8px 10px;font:inherit;font-size:12px;line-height:20px;white-space:nowrap;cursor:pointer}
+.study-mode-toggle:hover{border-color:#18191c!important;background:#fff!important;color:#18191c!important}
+.study-mode-toggle:focus-visible{outline:2px solid var(--study-accent,#00aeec);outline-offset:2px}
 html[data-study-page] .study-native-header{display:grid!important;grid-template-columns:minmax(90px,1fr) minmax(200px,500px) minmax(180px,1fr)!important;gap:0 24px!important;align-items:center!important}
 html[data-study-page] .study-native-header .left-entry{grid-column:1;width:auto!important;min-width:0!important}
 html[data-study-page] .study-native-header :is(.center-search-container,.nav-search-container){grid-column:2;width:100%!important;min-width:0!important;margin:0!important}
