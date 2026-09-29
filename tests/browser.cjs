@@ -41,9 +41,6 @@ function fixture(url) {
 }
 async function open(url) {
   const page = await context.newPage(); await page.goto(url);
-  if (url === 'https://www.bilibili.com/' && data.focusMode !== false) {
-    await page.waitForFunction(() => performance.getEntriesByType('navigation')[0]?.type === 'reload');
-  }
   for (const file of manifest.content_scripts[0].css) {
     for (;;) {
       try { await page.addStyleTag({ path: path.join(root, file) }); break; }
@@ -217,17 +214,16 @@ async function main() {
   });
   await searchPage.locator('.study-home-entry').click();
   await searchPage.waitForURL('https://www.bilibili.com/');
-  await searchPage.locator('.study-home').waitFor();
-  await searchPage.waitForFunction(() => performance.getEntriesByType('navigation')[0]?.type === 'reload');
   await searchPage.locator('.study-home').waitFor({ state: 'visible' });
   await assertHomePlacement(searchPage);
-  await searchPage.waitForTimeout(900);
-  assert.equal(homeLoads, 2, 'one homepage navigation followed by exactly one reload');
+  await searchPage.waitForTimeout(500);
+  assert.equal(homeLoads, 1, 'returning home performs one navigation without a reload');
+  assert.equal(await searchPage.evaluate(() => performance.getEntriesByType('navigation')[0]?.type), 'navigate');
   assert.equal(searchPage.url(), 'https://www.bilibili.com/');
   await searchPage.locator('.study-home-entry').click();
-  await searchPage.waitForTimeout(1200);
+  await searchPage.waitForTimeout(500);
   await searchPage.locator('.study-home').waitFor({ state: 'visible' });
-  assert.equal(homeLoads, 3, 'clicking from home causes one reload');
+  assert.equal(homeLoads, 1, 'clicking the home icon on the homepage does not reload');
   assert.equal(searchPage.url(), 'https://www.bilibili.com/');
   const trackedHome = await open('https://www.bilibili.com/?spm_id_from=333.337.0.0');
   await trackedHome.waitForURL('https://www.bilibili.com/');
@@ -254,11 +250,26 @@ async function main() {
   await restoredHome.waitForFunction(() => document.querySelector('.study-course img[src="https://archive.biliimg.com/cheese.jpg"]'));
   assert.equal(data.library.courses.find(item => item.id === 'ss4372').pageCount, 2);
   assert.equal(await page.getByRole('button', { name: '切换到正常 B站模式' }).count(), 1);
-  page.once('dialog', dialog => dialog.dismiss());
   await page.getByRole('button', { name: '切换到正常 B站模式' }).click();
+  const exitDialog = page.getByRole('dialog', { name: '退出专注模式' });
+  await exitDialog.waitFor();
+  const exitButton = exitDialog.getByRole('button', { name: '退出专注模式' });
+  assert.equal(await exitButton.isDisabled(), true);
+  await exitDialog.getByLabel('我知道为什么退出专注模式').check();
+  await exitDialog.getByLabel('我知道什么时候回来').check();
+  assert.equal(await exitButton.isDisabled(), true);
+  await exitDialog.getByLabel('我知道我还能做什么').check();
+  assert.equal(await exitButton.isDisabled(), false);
+  await exitDialog.getByLabel('我知道什么时候回来').uncheck();
+  assert.equal(await exitButton.isDisabled(), true);
+  await page.keyboard.press('Escape');
+  await exitDialog.waitFor({ state: 'detached' });
   assert.notEqual(data.focusMode, false);
-  page.once('dialog', dialog => dialog.accept());
   await page.getByRole('button', { name: '切换到正常 B站模式' }).click();
+  await exitDialog.waitFor();
+  assert.equal(await exitButton.isDisabled(), true);
+  for (const text of ['我知道为什么退出专注模式', '我知道什么时候回来', '我知道我还能做什么']) await exitDialog.getByLabel(text).check();
+  await exitButton.click();
   await page.getByRole('button', { name: '切换到专注模式' }).waitFor();
   for (const file of manifest.content_scripts[0].css) await page.addStyleTag({ path: path.join(root, file) });
   await assertModeButtonStyle();
@@ -269,6 +280,10 @@ async function main() {
   const normalTeacher = await open('https://space.bilibili.com/123/');
   assert.equal(normalTeacher.url(), 'https://space.bilibili.com/123/');
   assert.equal(await normalTeacher.locator('#study-save-teacher').count(), 0);
+  // Native header handlers can consume the click during capture, before button.onclick runs.
+  await page.evaluate(() => document.addEventListener('click', event => {
+    if (event.target.closest?.('.study-mode-toggle')) event.stopImmediatePropagation();
+  }, true));
   failNextLibraryRead = true;
   await page.getByRole('button', { name: '切换到专注模式' }).click();
   await page.locator('.study-home').waitFor();

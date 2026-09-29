@@ -35,6 +35,40 @@
     node.addEventListener('close', () => node.remove()); document.body.append(node); node.showModal();
     return node;
   }
+  function confirmExit(onConfirm) {
+    if (document.querySelector('.study-dialog')) return;
+    const node = el('dialog', '', 'study-dialog study-exit-dialog');
+    const form = el('form');
+    const heading = el('h3', '退出专注模式'); heading.id = 'study-exit-title';
+    node.setAttribute('aria-labelledby', heading.id);
+    form.append(heading, el('p', '请逐项确认，再切换到正常 B站模式。', 'study-help'));
+    const choices = ['我知道为什么退出专注模式', '我知道什么时候回来', '我知道我还能做什么'];
+    const boxes = choices.map(text => {
+      const label = el('label', '', 'study-exit-choice');
+      const box = el('input'); box.type = 'checkbox';
+      label.append(box, document.createTextNode(text)); form.append(label);
+      return box;
+    });
+    const error = el('p', '', 'study-form-error'); error.setAttribute('role', 'alert');
+    const cancel = button('取消', () => node.close());
+    const submit = el('button', '退出专注模式', 'study-primary'); submit.type = 'submit'; submit.disabled = true;
+    const update = () => { submit.disabled = !boxes.every(box => box.checked); };
+    for (const box of boxes) box.addEventListener('change', update);
+    const actions = el('div', '', 'study-actions'); actions.append(cancel, submit);
+    form.append(error, actions); node.append(form);
+    form.onsubmit = async event => {
+      event.preventDefault();
+      if (!boxes.every(box => box.checked) || cancel.disabled) return;
+      submit.disabled = true; cancel.disabled = true; error.textContent = '';
+      try { await onConfirm(); node.close(); }
+      catch (failure) { error.textContent = failure.message || '模式切换失败，请重试。'; }
+      finally { cancel.disabled = false; update(); }
+    };
+    node.addEventListener('cancel', event => { if (cancel.disabled) event.preventDefault(); });
+    node.addEventListener('close', () => node.remove());
+    document.body.append(node); node.showModal();
+    return node;
+  }
   function image(value, fallback, className) {
     const wrap = el('span', fallback, className);
     const url = Library.imageUrl(value);
@@ -169,5 +203,5 @@
     }
     return { render, addItem };
   }
-  globalThis.FocusUI = { create, el, notice };
+  globalThis.FocusUI = { create, el, notice, confirmExit };
 })();

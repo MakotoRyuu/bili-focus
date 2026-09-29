@@ -133,7 +133,6 @@
     if (lastUrl !== location.href) {
       lastUrl = location.href; document.documentElement.dataset.studyPage = kind;
       if (kind === 'home' && location.href !== home) { location.replace(home); return; }
-      if (kind === 'home' && FocusHeader.refreshHomeOnce()) return;
       if (kind === 'teacher' && !/^\/\d+\/(?:upload|video|channel|lists|pugv)(?:\/|$)/.test(location.pathname)) {
         location.replace(`https://space.bilibili.com/${Study.teacherId(location.href)}/upload/video`); return;
       }
@@ -147,8 +146,8 @@
     if (kind === 'video' || kind === 'cheese') captureProgress();
   }
   async function toggleMode() {
-    if (focusMode && !confirm('确定退出专注模式，切换到正常 B站吗？娱乐推荐、评论和弹幕将重新显示。')) return;
-    try { await rpc('mode.set', { focusMode: !focusMode }); }
+    if (focusMode) return FocusUI.confirmExit(() => rpc('mode.set', { focusMode: false }));
+    try { await rpc('mode.set', { focusMode: true }); }
     catch (error) { FocusUI.notice(error.message || '模式切换失败，请重试。'); }
   }
   function search(event) {

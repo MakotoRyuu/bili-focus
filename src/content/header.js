@@ -1,16 +1,8 @@
 (() => {
   const home = 'https://www.bilibili.com/';
-  const navigationType = performance.getEntriesByType('navigation')[0]?.type;
-  function refreshHomeOnce() {
-    if (location.href === home && ['navigate', 'back_forward'].includes(navigationType)) {
-      // A full reload has navigationType === 'reload', so it cannot trigger itself again.
-      location.reload();
-      return true;
-    }
-    return false;
-  }
   const headerSelector = '.bili-header__bar, .bili-mini-header__content, .international-header .mini-header';
   const primed = new WeakSet();
+  let modeToggleAction;
   function homeLink() {
     const link = document.createElement('a'); link.href = home; link.className = 'study-home-entry home-page-entry'; link.setAttribute('aria-label', '返回主页'); link.title = '返回主页';
     // Bilibili's familiar TV silhouette, rendered locally without external assets.
@@ -69,6 +61,7 @@
     }
   }
   function modeSwitch(focused, toggle) {
+    modeToggleAction = toggle;
     for (const search of document.querySelectorAll('.center-search-container, .nav-search-container')) {
       if (!search.querySelector('input')) continue;
       let button = search.querySelector('.study-mode-toggle');
@@ -79,9 +72,15 @@
       button.textContent = focused ? '退出专注' : '开启专注';
       button.title = focused ? '切换到正常 B站模式' : '切换到专注模式';
       button.setAttribute('aria-label', button.title);
-      button.onclick = toggle;
     }
   }
+  // Handle the switch before Bilibili's delegated header/search click handlers.
+  document.addEventListener('click', event => {
+    if (!event.target.closest?.('.study-mode-toggle')) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) modeToggleAction?.();
+  }, true);
   // Prevent native delegated navigation from adding tracking or using its SPA router.
   document.addEventListener('click', event => {
     const link = event.target.closest?.('.study-home-entry');
@@ -90,9 +89,9 @@
     if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
       event.preventDefault();
       const alreadyHome = location.origin === 'https://www.bilibili.com' && location.pathname === '/';
-      if (alreadyHome) location.reload();
+      if (alreadyHome) window.scrollTo({ top: 0, behavior: 'smooth' });
       else location.assign(home);
     }
   }, true);
-  globalThis.FocusHeader = { update, modeSwitch, refreshHomeOnce };
+  globalThis.FocusHeader = { update, modeSwitch };
 })();
