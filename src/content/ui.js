@@ -82,6 +82,16 @@
   }
   function create({ getState, mutate, metadata, getAppearance, saveAppearance }) {
     const labels = { teacher: '老师', course: '课程' };
+    let categoryKind = 'course', resourceKind = 'course';
+    function addControl(title, selected, choose, action, style) {
+      const control = el('div', '', 'study-add-control');
+      const switcher = el('div', '', 'study-add-switch'); switcher.setAttribute('role', 'group'); switcher.setAttribute('aria-label', `${title}类型`);
+      for (const kind of ['course', 'teacher']) {
+        const option = button(labels[kind], () => { choose(kind); render(document.querySelector('#study-home')); }, 'study-add-option');
+        option.setAttribute('aria-pressed', String(selected === kind)); switcher.append(option);
+      }
+      control.append(switcher, button(title, action, style)); return control;
+    }
     function addCategory(kind) {
       dialog(`添加${labels[kind]}分类`, form => {
         const name = el('input'); name.required = true; name.maxLength = 30; field(form, '分类名称', name);
@@ -154,6 +164,7 @@
       link.href = teacher ? `https://space.bilibili.com/${item.id}/upload/video`
         : classroom ? `https://www.bilibili.com/cheese/play/ep${item.lastEpisodeId || item.startEpisodeId || item.firstEpisodeId}`
           : `https://www.bilibili.com/video/${item.id}/?p=${item.lastPage || 1}`;
+      if (!teacher) { link.target = '_blank'; link.rel = 'noopener noreferrer'; }
       link.append(image(teacher ? item.avatar : item.cover, teacher ? item.name.slice(0,1) : '封面暂不可用', teacher ? 'study-avatar' : 'study-cover'), el('span', item.name, 'study-card-name'));
       const unit = classroom ? '课' : 'P';
       const detail = teacher ? '查看投稿与合集' : item.pageCount > 1 ? (item.lastPage ? `上次看到第 ${item.lastPage} ${unit} · 共 ${item.pageCount} ${unit}` : `尚未开始 · 共 ${item.pageCount} ${unit}`) : '打开课程';
@@ -164,24 +175,25 @@
     }
     function render(root) {
       root.replaceChildren();
-      for (const kind of ['course', 'teacher']) {
-        const state = getState(), section = el('section', '', 'study-section'); section.dataset.collection = kind;
-        const heading = el('div', '', 'study-heading'); heading.append(el('h2', kind === 'teacher' ? '我的老师' : '我的课程'));
-        if (kind === 'course') heading.append(settings());
-        heading.append(button('添加分类', () => addCategory(kind), 'study-secondary'));
-        heading.append(button(`添加${labels[kind]}`, () => addItem(kind), 'study-primary'));
-        section.append(heading);
-        const categories = state[`${kind}Categories`];
-        for (const [index, category] of categories.entries()) {
-          const group = el('section', '', 'study-category'); group.dataset.category = category.id;
-          const separator = el('div', '', 'study-category-heading'); separator.append(el('h3', category.name), el('span', '', 'study-divider'));
+      const state = getState();
+      const heading = el('div', '', 'study-heading'); heading.append(el('h2', '我的学习'), settings());
+      heading.append(addControl('添加分类', categoryKind, kind => { categoryKind = kind; }, () => addCategory(categoryKind), 'study-secondary'));
+      heading.append(addControl('添加资源', resourceKind, kind => { resourceKind = kind; }, () => addItem(resourceKind), 'study-primary'));
+      root.append(heading);
+      for (const [index, entry] of state.categoryOrder.entries()) {
+          const { kind } = entry;
+          const category = state[`${kind}Categories`].find(item => item.id === entry.id);
+          if (!category) continue;
+          const categories = state[`${kind}Categories`];
+          const group = el('section', '', 'study-category study-section'); group.dataset.category = category.id; group.dataset.collection = kind;
+          const separator = el('div', '', 'study-category-heading'); separator.append(el('span', labels[kind], 'study-category-kind'), el('h3', category.name), el('span', '', 'study-divider'));
           const menu = el('details', '', 'study-category-menu');
           const trigger = el('summary', '分类操作');
-          trigger.setAttribute('aria-label', `${category.name}的分类操作`);
+          trigger.setAttribute('aria-label', `${labels[kind]}「${category.name}」的分类操作`);
           const actions = el('div', '', 'study-category-actions');
           const remove = button('删除分类', () => { menu.open = false; deleteCategory(kind, category); });
           remove.disabled = categories.length === 1; remove.title = remove.disabled ? '至少保留一个分类' : '同时移除该分类中的全部收藏'; actions.append(remove);
-          for (const [label, direction, disabled] of [['上移', -1, index === 0], ['下移', 1, index === categories.length - 1]]) {
+          for (const [label, direction, disabled] of [['上移', -1, index === 0], ['下移', 1, index === state.categoryOrder.length - 1]]) {
             const move = button(label, async () => {
               menu.open = false;
               try { await mutate({ type: 'category.move', kind, id: category.id, direction }); }
@@ -196,9 +208,7 @@
           const items = state[`${kind}s`].filter(item => item.categoryId === category.id);
           if (!items.length) grid.append(el('p', `此分类还没有${labels[kind]}。`, 'study-empty'));
           for (const item of items) grid.append(card(kind, item));
-          group.append(grid); section.append(group);
-        }
-        root.append(section);
+          group.append(grid); root.append(group);
       }
     }
     return { render, addItem };

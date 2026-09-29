@@ -8,6 +8,7 @@ test('migrates legacy teacher nicknames without losing favorites', () => {
   assert.equal(state.teachers[0].name, '数学老师');
   assert.equal(state.teacherCategories.length, 1);
   assert.equal(state.courseCategories.length, 1);
+  assert.deepEqual(state.categoryOrder, [{ kind: 'course', id: 'default' }, { kind: 'teacher', id: 'default' }]);
   assert.deepEqual(Library.normalize({ library: state }), state);
 });
 test('category removal cascades only within its own collection; the final category is protected', () => {
@@ -29,7 +30,7 @@ test('course categories are independent and cascade; empty and duplicate categor
   state = add(state, { type: 'category.remove', kind: 'course', id: 'math' });
   assert.equal(state.courses.length, 0); assert.equal(state.teacherCategories.length, 1);
 });
-test('moving a category swaps adjacent positions without moving favorites or the other collection', () => {
+test('moving a category swaps adjacent positions across courses and teachers', () => {
   let state = Library.normalize();
   state = add(state, { type: 'category.add', kind: 'teacher', id: 'math', name: '数学' });
   state = add(state, { type: 'category.add', kind: 'teacher', id: 'english', name: '英语' });
@@ -39,6 +40,9 @@ test('moving a category swaps adjacent positions without moving favorites or the
   assert.equal(state.teachers[0].categoryId, 'math');
   assert.deepEqual(state.courseCategories.map(item => item.id), ['default']);
   state = add(state, { type: 'category.move', kind: 'teacher', id: 'math', direction: -1 });
+  assert.deepEqual(state.teacherCategories.map(item => item.id), ['math', 'default', 'english']);
+  assert.deepEqual(state.categoryOrder.slice(0, 2), [{ kind: 'teacher', id: 'math' }, { kind: 'course', id: 'default' }]);
+  state = add(state, { type: 'category.move', kind: 'teacher', id: 'math', direction: 1 });
   assert.deepEqual(state.teacherCategories.map(item => item.id), ['math', 'default', 'english']);
   state = add(state, { type: 'category.move', kind: 'teacher', id: 'math', direction: 1 });
   assert.deepEqual(state.teacherCategories.map(item => item.id), ['default', 'math', 'english']);

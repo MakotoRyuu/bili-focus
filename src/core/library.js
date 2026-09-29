@@ -27,7 +27,7 @@
   }
   function normalize(raw = {}) {
     const library = raw.library || {};
-    const result = { version: 1, teacherCategories: [], courseCategories: [], teachers: [], courses: [] };
+    const result = { version: 1, teacherCategories: [], courseCategories: [], categoryOrder: [], teachers: [], courses: [] };
     for (const kind of ['teacher', 'course']) {
       const key = `${kind}Categories`;
       const categories = Array.isArray(library[key]) ? library[key] : [];
@@ -38,6 +38,16 @@
         categoryId: result[key].some(category => category.id === item.categoryId) ? item.categoryId : result[key][0].id,
         ...(kind === 'teacher' ? { avatar: imageUrl(item.avatar) } : { cover: imageUrl(item.cover) })
       }));
+    }
+    const available = ['course', 'teacher'].flatMap(kind => result[`${kind}Categories`].map(category => ({ kind, id: category.id })));
+    const seen = new Set();
+    for (const entry of [...(Array.isArray(library.categoryOrder) ? library.categoryOrder : []), ...available]) {
+      const key = `${entry?.kind}:${entry?.id}`;
+      if (!available.some(item => item.kind === entry?.kind && item.id === entry?.id) || seen.has(key)) continue;
+      seen.add(key); result.categoryOrder.push({ kind: entry.kind, id: entry.id });
+    }
+    for (const kind of ['teacher', 'course']) {
+      result[`${kind}Categories`].sort((a, b) => result.categoryOrder.findIndex(entry => entry.kind === kind && entry.id === a.id) - result.categoryOrder.findIndex(entry => entry.kind === kind && entry.id === b.id));
     }
     return result;
   }
@@ -51,18 +61,21 @@
       if (!name) throw new Error('请填写分类名称。');
       if (state[categories].some(item => item.name === name)) throw new Error('分类名称已存在。');
       state[categories].push({ id: action.id, name });
+      state.categoryOrder.push({ kind, id: action.id });
     } else if (action.type === 'category.remove') {
       if (state[categories].length <= 1) throw new Error('至少保留一个分类。');
       if (!state[categories].some(item => item.id === action.id)) throw new Error('分类不存在。');
       state[categories] = state[categories].filter(item => item.id !== action.id);
+      state.categoryOrder = state.categoryOrder.filter(item => item.kind !== kind || item.id !== action.id);
       state[items] = state[items].filter(item => item.categoryId !== action.id);
     } else if (action.type === 'category.move') {
-      const index = state[categories].findIndex(item => item.id === action.id);
+      const index = state.categoryOrder.findIndex(item => item.kind === kind && item.id === action.id);
       if (index < 0) throw new Error('分类不存在。');
       if (action.direction !== -1 && action.direction !== 1) throw new Error('无效的移动方向。');
       const next = index + action.direction;
-      if (next < 0 || next >= state[categories].length) return state;
-      [state[categories][index], state[categories][next]] = [state[categories][next], state[categories][index]];
+      if (next < 0 || next >= state.categoryOrder.length) return state;
+      [state.categoryOrder[index], state.categoryOrder[next]] = [state.categoryOrder[next], state.categoryOrder[index]];
+      for (const type of ['teacher', 'course']) state[`${type}Categories`].sort((a, b) => state.categoryOrder.findIndex(entry => entry.kind === type && entry.id === a.id) - state.categoryOrder.findIndex(entry => entry.kind === type && entry.id === b.id));
     } else if (action.type === 'item.save') {
       const item = action.item;
       if (!item || !String(item.name || '').trim()) throw new Error('请填写名称。');

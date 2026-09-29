@@ -104,6 +104,14 @@ async function main() {
   }
   await page.setViewportSize({width:1440,height:1000});
   const selects = await page.locator('.study-settings select').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().width)); assert.equal(selects[0], selects[1]);
+  const addControls = await page.locator('.study-add-control').evaluateAll(nodes => nodes.map(control => {
+    const outer = control.getBoundingClientRect(), switcher = control.querySelector('.study-add-switch').getBoundingClientRect();
+    const action = control.lastElementChild.getBoundingClientRect();
+    return { switchInside: switcher.left >= outer.left && switcher.right <= outer.right,
+      actionInside: action.left >= outer.left && action.right <= outer.right, seam: action.left - switcher.right };
+  }));
+  assert.equal(addControls.length, 2);
+  assert.ok(addControls.every(control => control.switchInside && control.actionInside && Math.abs(control.seam) <= 1), JSON.stringify(addControls));
   assert.deepEqual(await page.locator('[data-collection]').evaluateAll(nodes=>nodes.map(node=>node.dataset.collection)), ['course','teacher']);
   assert.equal(await page.locator('.study-home-entry svg').count(),1);
   await page.locator('.study-account-name').waitFor();
@@ -115,21 +123,35 @@ async function main() {
   await page.locator('.study-account-login').waitFor(); await page.locator('.study-account-login').click(); assert.equal(await page.evaluate(()=>window.loginClicked),true);
   const teachers = page.locator('[data-collection=teacher]'), courses = page.locator('[data-collection=course]');
   const teacherMenu = category => category.locator('.study-category-menu');
-  await teacherMenu(teachers.locator('[data-category=default]')).locator('summary').click();
-  assert.equal(await teachers.getByRole('button', { name: '删除分类', exact: true }).isDisabled(), true);
-  assert.equal(await teachers.getByRole('button', { name: '上移', exact: true }).isDisabled(), true);
-  await teachers.getByRole('button', { name: '添加分类', exact: true }).click(); await page.getByLabel('分类名称', { exact: true }).fill('数学'); await page.locator('dialog').getByRole('button', { name: '添加分类', exact: true }).click();
-  await page.waitForFunction(() => document.querySelectorAll('[data-collection=teacher] .study-category').length === 2);
-  const teacherOrder = () => teachers.locator('.study-category h3').allTextContents();
-  const mathCategory = () => teachers.locator('.study-category').filter({ has: page.getByRole('heading', { name: '数学', exact: true }) });
+  await teacherMenu(page.locator('[data-collection=teacher][data-category=default]')).locator('summary').click();
+  assert.equal(await page.locator('[data-collection=teacher][data-category=default]').getByRole('button', { name: '删除分类', exact: true }).isDisabled(), true);
+  await page.getByRole('group', { name: '添加分类类型' }).getByRole('button', { name: '老师' }).click();
+  await page.getByRole('button', { name: '添加分类', exact: true }).click(); await page.getByLabel('分类名称', { exact: true }).fill('数学'); await page.locator('dialog').getByRole('button', { name: '添加分类', exact: true }).click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-collection=teacher]').length === 2);
+  const teacherOrder = () => teachers.locator('h3').allTextContents();
+  const mathCategory = () => teachers.filter({ has: page.getByRole('heading', { name: '数学', exact: true }) });
   await teacherMenu(mathCategory()).locator('summary').click();
   await mathCategory().getByRole('button', { name: '上移' }).click();
-  await page.waitForFunction(() => document.querySelector('[data-collection=teacher] .study-category h3')?.textContent === '数学');
+  await page.waitForFunction(() => document.querySelector('[data-collection=teacher] h3')?.textContent === '数学');
   assert.deepEqual(await teacherOrder(), ['数学', '未分类']);
-  assert.deepEqual(await courses.locator('.study-category').evaluateAll(nodes => nodes.map(node => node.dataset.category)), ['default']);
+  assert.deepEqual(await courses.evaluateAll(nodes => nodes.map(node => node.dataset.category)), ['default']);
+  await teacherMenu(mathCategory()).locator('summary').click();
+  await mathCategory().getByRole('button', { name: '上移' }).click();
+  await page.waitForFunction(() => document.querySelector('[data-collection]')?.dataset.collection === 'teacher');
+  assert.deepEqual(await page.locator('[data-collection]').evaluateAll(nodes => nodes.map(node => `${node.dataset.collection}:${node.querySelector('h3').textContent}`)), ['teacher:数学', 'course:未分类', 'teacher:未分类']);
+  await teacherMenu(mathCategory()).locator('summary').click();
+  const menuBounds = await mathCategory().locator('.study-category-actions').evaluate(panel => {
+    const outer = panel.getBoundingClientRect();
+    return [...panel.querySelectorAll('button')].map(button => {
+      const inner = button.getBoundingClientRect(); return { left: inner.left - outer.left, right: outer.right - inner.right };
+    });
+  });
+  assert.ok(menuBounds.every(item => item.left >= 0 && item.right >= 0), JSON.stringify(menuBounds));
+  await mathCategory().getByRole('button', { name: '下移' }).click();
+  await page.waitForFunction(() => document.querySelector('[data-collection]')?.dataset.collection === 'course');
   await teacherMenu(mathCategory()).locator('summary').click();
   await mathCategory().getByRole('button', { name: '下移' }).click();
-  await page.waitForFunction(() => document.querySelector('[data-collection=teacher] .study-category h3')?.textContent === '未分类');
+  await page.waitForFunction(() => document.querySelector('[data-collection=teacher] h3')?.textContent === '未分类');
   assert.deepEqual(await teacherOrder(), ['未分类', '数学']);
   const teacherPage = await open('https://space.bilibili.com/123/upload/video'); await teacherPage.locator('#study-save-teacher').click();
   assert.equal(await teacherPage.getByLabel('分类', { exact: true }).inputValue(), '');
@@ -143,19 +165,27 @@ async function main() {
   await teacherPage.waitForTimeout(800);
   assert.equal(teacherPage.url(), 'https://space.bilibili.com/123/pugv');
   // Manual teacher input uses public account artwork and still requires a category.
-  await page.getByRole('button', { name: '添加老师', exact: true }).click(); await page.getByLabel('主页链接或 UID', { exact: true }).fill('123'); await page.getByLabel('昵称', { exact: true }).fill('手动老师'); await page.getByLabel('分类', { exact: true }).selectOption({ label: '数学' }); await page.getByRole('button', { name: '确认收藏', exact: true }).click(); await page.locator('.study-teacher').filter({hasText:'手动老师'}).locator('img').waitFor();
-  await page.getByRole('button', { name: '添加课程', exact: true }).click(); await page.getByLabel('课程链接', { exact: true }).fill('https://www.bilibili.com/video/BV1GJ411x7h7/?p=2'); await page.getByLabel('分类', { exact: true }).selectOption('default'); await page.getByRole('button', { name: '确认收藏', exact: true }).click(); await page.locator('.study-course img').waitFor();
+  await page.getByRole('group', { name: '添加资源类型' }).getByRole('button', { name: '老师' }).click();
+  await page.getByRole('button', { name: '添加资源', exact: true }).click(); await page.getByLabel('主页链接或 UID', { exact: true }).fill('123'); await page.getByLabel('昵称', { exact: true }).fill('手动老师'); await page.getByLabel('分类', { exact: true }).selectOption({ label: '数学' }); await page.getByRole('button', { name: '确认收藏', exact: true }).click(); await page.locator('.study-teacher').filter({hasText:'手动老师'}).locator('img').waitFor();
+  await page.getByRole('group', { name: '添加资源类型' }).getByRole('button', { name: '课程' }).click();
+  await page.getByRole('button', { name: '添加资源', exact: true }).click(); await page.getByLabel('课程链接', { exact: true }).fill('https://www.bilibili.com/video/BV1GJ411x7h7/?p=2'); await page.getByLabel('分类', { exact: true }).selectOption('default'); await page.getByRole('button', { name: '确认收藏', exact: true }).click(); await page.locator('.study-course img').waitFor();
   assert.match(await page.locator('.study-course .study-card-detail').innerText(), /尚未开始/);
   const videoPage = await open('https://www.bilibili.com/video/BV1GJ411x7h7/?p=3');
   await videoPage.waitForFunction(() => document.querySelector('.study-home-entry'));
   await videoPage.evaluate(() => { const video = document.querySelector('video'); Object.defineProperties(video, { paused: { value: false }, currentTime: { value: 3 } }); video.dispatchEvent(new Event('timeupdate')); });
   await page.waitForFunction(() => document.querySelector('.study-course .study-card-detail')?.textContent.includes('第 3 P'));
   assert.ok((await page.locator('.study-course>a').getAttribute('href')).endsWith('?p=3'));
-  assert.equal(await page.getByRole('button', {name:'添加老师',exact:true}).count(),1); assert.equal(await page.getByRole('button',{name:'添加课程',exact:true}).count(),1);
+  assert.equal(await page.locator('.study-course>a').getAttribute('target'), '_blank');
+  assert.equal(await page.locator('.study-course>a').getAttribute('rel'), 'noopener noreferrer');
+  const [openedVideo] = await Promise.all([context.waitForEvent('page'), page.locator('.study-course>a').click()]);
+  await openedVideo.waitForLoadState();
+  assert.equal(openedVideo.url(), 'https://www.bilibili.com/video/BV1GJ411x7h7/?p=3');
+  assert.equal(page.url(), 'https://www.bilibili.com/');
+  assert.equal(await page.getByRole('button', {name:'添加资源',exact:true}).count(),1); assert.equal(await page.getByRole('button',{name:'添加分类',exact:true}).count(),1);
   await page.locator('.study-teacher').filter({hasText:'手动老师'}).locator('.study-edit').click();
   await page.getByLabel('昵称',{exact:true}).fill('修改后的昵称'); await page.getByLabel('分类',{exact:true}).selectOption('default');
   await page.getByRole('button',{name:'保存修改',exact:true}).click();
-  await page.locator('[data-collection=teacher] [data-category=default]').getByText('修改后的昵称',{exact:true}).waitFor();
+  await page.locator('[data-collection=teacher][data-category=default]').getByText('修改后的昵称',{exact:true}).waitFor();
   await page.locator('.study-course .study-edit').click(); await page.getByLabel('课程名称',{exact:true}).fill('新课程名');
   await page.getByRole('button',{name:'保存修改',exact:true}).click();
   await page.getByText('新课程名',{exact:true}).waitFor(); assert.match(await page.locator('.study-course .study-card-detail').innerText(), /第 3 P/);
@@ -164,15 +194,15 @@ async function main() {
   await page.locator('.study-teacher').filter({hasText:'修改后的昵称'}).locator('.study-edit').click();
   await page.getByLabel('分类',{exact:true}).selectOption({label:'数学'}); await page.getByRole('button',{name:'保存修改',exact:true}).click();
 
-  const math = teachers.locator('.study-category').filter({ has: page.getByRole('heading', { name: '数学', exact: true }) });
+  const math = teachers.filter({ has: page.getByRole('heading', { name: '数学', exact: true }) });
   await math.locator('.study-category-menu summary').click();
   await math.getByRole('button', { name: '删除分类', exact: true }).click(); await page.getByRole('button', { name: '删除分类及收藏', exact: true }).click();
-  await page.waitForFunction(() => document.querySelectorAll('[data-collection=teacher] .study-category').length === 1);
+  await page.waitForFunction(() => document.querySelectorAll('[data-collection=teacher]').length === 1);
   assert.equal(await page.locator('.study-teacher').count(), 1); assert.equal(await page.locator('.study-course').count(), 1);
   networkFails = true;
-  await page.getByRole('button', { name: '添加课程', exact: true }).click(); await page.getByLabel('课程链接', { exact: true }).fill('https://www.bilibili.com/video/BV1GJ411x7h7/'); await page.getByLabel('分类', { exact: true }).selectOption('default'); await page.getByRole('button', { name: '确认收藏', exact: true }).click(); await page.waitForFunction(() => document.querySelector('.study-form-error')?.textContent.length > 0); assert.equal(await page.locator('.study-course').count(), 1); await page.getByRole('button', { name: '取消', exact: true }).click();
+  await page.getByRole('button', { name: '添加资源', exact: true }).click(); await page.getByLabel('课程链接', { exact: true }).fill('https://www.bilibili.com/video/BV1GJ411x7h7/'); await page.getByLabel('分类', { exact: true }).selectOption('default'); await page.getByRole('button', { name: '确认收藏', exact: true }).click(); await page.waitForFunction(() => document.querySelector('.study-form-error')?.textContent.length > 0); assert.equal(await page.locator('.study-course').count(), 1); await page.getByRole('button', { name: '取消', exact: true }).click();
   networkFails = false;
-  await page.getByRole('button', { name: '添加课程', exact: true }).click();
+  await page.getByRole('button', { name: '添加资源', exact: true }).click();
   await page.getByLabel('课程链接', { exact: true }).fill('https://www.bilibili.com/cheese/play/ep172532');
   await page.getByLabel('分类', { exact: true }).selectOption('default');
   await page.getByRole('button', { name: '确认收藏', exact: true }).click();
@@ -182,6 +212,7 @@ async function main() {
   assert.equal(await classroomCard.locator('img').getAttribute('src'), 'https://archive.biliimg.com/cheese.jpg');
   assert.match(await classroomCard.locator('.study-card-detail').innerText(), /共 2 课/);
   assert.equal(await classroomCard.locator('a').getAttribute('href'), 'https://www.bilibili.com/cheese/play/ep172532');
+  assert.equal(await classroomCard.locator('a').getAttribute('target'), '_blank');
   const classroomPage = await open('https://www.bilibili.com/cheese/play/ep172532');
   await classroomPage.waitForFunction(() => document.documentElement.dataset.studyPage === 'cheese');
   assert.equal(classroomPage.url(), 'https://www.bilibili.com/cheese/play/ep172532');
