@@ -20,6 +20,12 @@
   }
   const ui = FocusUI.create({
     getState: () => state, mutate, metadata: (kind, url) => rpc('metadata', { kind, url }),
+    replace: async backup => {
+      const imported = await rpc('library.import', { backup });
+      state = imported.library;
+      if (Object.keys(imported.preferences).length) await chrome.storage.local.set(imported.preferences);
+      refresh(); return imported;
+    },
     getAppearance: () => ({ palette, theme: appearance }),
     saveAppearance: (key, value) => chrome.storage.local.set({ [key]: value })
   });
@@ -120,7 +126,13 @@
     const key = `${saved.id}:${parsed.page}`;
     if (lastProgress === key) return;
     progressBusy = true;
-    mutate({ type: 'course.progress', kind: 'course', id: saved.id, page: parsed.page })
+    // Courses can gain pages after being saved; refresh the page count once so progress on new pages is not dropped.
+    const grow = parsed.page > (saved.pageCount || 1)
+      ? rpc('metadata', { kind: 'course', url: `https://www.bilibili.com/video/${saved.id}/` })
+        .then(data => mutate({ type: 'course.metadata', kind: 'course', id: saved.id, cover: data.cover, pageCount: data.pageCount }))
+        .catch(() => {}) // The page guard in Library.mutate still applies if this refresh fails.
+      : Promise.resolve();
+    grow.then(() => mutate({ type: 'course.progress', kind: 'course', id: saved.id, page: parsed.page }))
       .then(() => { lastProgress = key; })
       .catch(e => FocusUI.notice(e.message)).finally(() => { progressBusy = false; });
   }
@@ -189,5 +201,16 @@
     if (document.body) show(); else document.addEventListener('DOMContentLoaded', show, { once: true });
   });
   update(); document.addEventListener('DOMContentLoaded', update, { once: true });
-  setInterval(update, 400);
+  // React to page changes instead of a fast poll; a slow interval covers anything the observer misses.
+  let scheduled = false;
+  const scheduleUpdate = () => {
+    if (scheduled || document.hidden) return;
+    scheduled = true;
+    setTimeout(() => { scheduled = false; update(); }, 100);
+  };
+  const watch = () => new MutationObserver(scheduleUpdate).observe(document.documentElement, { childList: true, subtree: true });
+  if (document.documentElement) watch();
+  else document.addEventListener('DOMContentLoaded', watch, { once: true });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) scheduleUpdate(); });
+  setInterval(() => { if (!document.hidden) update(); }, 2000);
 })();

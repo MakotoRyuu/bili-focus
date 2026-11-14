@@ -95,6 +95,70 @@ test('teacher toggle removal and re-add do not create duplicates', () => {
   state = add(state, { type: 'item.remove', kind: 'teacher', id: '123' });
   assert.equal(state.teachers.length, 0);
 });
+test('re-saving a removed course restores watch progress (undo), existing progress always wins', () => {
+  let state = Library.normalize();
+  const course = { id: 'BV1GJ411x7h7', aid: 1234, name: '课', categoryId: 'default', pageCount: 6 };
+  state = add(state, { type: 'item.save', kind: 'course', item: course });
+  state = add(state, { type: 'course.progress', kind: 'course', id: course.id, page: 4 });
+  const snapshot = structuredClone(state.courses[0]);
+  state = add(state, { type: 'item.remove', kind: 'course', id: course.id });
+  state = add(state, { type: 'item.save', kind: 'course', item: snapshot });
+  assert.equal(state.courses[0].lastPage, 4);
+  // Out-of-range or malformed progress from a snapshot is ignored.
+  state = add(state, { type: 'item.remove', kind: 'course', id: course.id });
+  state = add(state, { type: 'item.save', kind: 'course', item: { ...snapshot, lastPage: 99 } });
+  assert.equal(state.courses[0].lastPage, null);
+  state = add(state, { type: 'item.remove', kind: 'course', id: course.id });
+  state = add(state, { type: 'item.save', kind: 'course', item: { ...snapshot, lastPage: '3' } });
+  assert.equal(state.courses[0].lastPage, null);
+  // A still-existing entry keeps its live progress instead of the payload's.
+  state = add(state, { type: 'item.remove', kind: 'course', id: course.id });
+  state = add(state, { type: 'item.save', kind: 'course', item: snapshot });
+  state = add(state, { type: 'course.progress', kind: 'course', id: course.id, page: 2 });
+  state = add(state, { type: 'item.save', kind: 'course', item: { ...snapshot, lastPage: 5 } });
+  assert.equal(state.courses[0].lastPage, 2);
+});
+test('undo restore keeps the watched episode of a classroom course', () => {
+  let state = Library.normalize();
+  const item = { id: 'ss4372', name: '清史', categoryId: 'default', pageCount: 21, firstEpisodeId: '172445', startEpisodeId: '172532', lastPage: 2, lastEpisodeId: '172532' };
+  state = add(state, { type: 'item.save', kind: 'course', item });
+  state = add(state, { type: 'item.remove', kind: 'course', id: item.id });
+  state = add(state, { type: 'item.save', kind: 'course', item });
+  assert.equal(state.courses[0].lastPage, 2);
+  assert.equal(state.courses[0].lastEpisodeId, '172532');
+});
+test('backup export/import round-trips the library and valid appearance only', () => {
+  let state = Library.normalize();
+  state = add(state, { type: 'item.save', kind: 'teacher', item: { id: '123', name: '老师', categoryId: 'default', avatar: 'https://i0.hdslb.com/avatar.png' } });
+  state = add(state, { type: 'item.save', kind: 'course', item: { id: 'BV1GJ411x7h7', name: '课', categoryId: 'default', pageCount: 6, lastPage: 3 } });
+  const backup = Library.exportData(state, { palette: 'pink', theme: 'dark' });
+  assert.equal(backup.app, 'bili-focus');
+  assert.equal(typeof backup.exportedAt, 'string');
+  const restored = Library.importData(JSON.stringify(backup));
+  assert.deepEqual(restored.library, state);
+  assert.deepEqual(restored.preferences, { palette: 'pink', theme: 'dark' });
+  // Bare library objects and invalid appearance values are handled safely.
+  const bare = Library.importData({ teachers: state.teachers, teacherCategories: state.teacherCategories });
+  assert.equal(bare.library.teachers[0].name, '老师');
+  assert.deepEqual(bare.preferences, {});
+  assert.deepEqual(Library.importData({ library: { teachers: [] }, preferences: { palette: 'red', theme: 'neon' } }).preferences, {});
+  assert.equal(Library.exportData(state, { palette: 'red' }).preferences, undefined);
+  for (const bad of ['not json', '123', '[]', '{}', '{"foo":1}', '{"library":[]}']) assert.throws(() => Library.importData(bad), /JSON|格式/);
+});
+test('imported libraries are normalized like any stored state', () => {
+  const imported = Library.importData(JSON.stringify({
+    library: {
+      teacherCategories: [{ id: 'math', name: '数学' }], courseCategories: [],
+      teachers: [{ id: '123', name: '老师', categoryId: 'gone', avatar: 'https://evil.test/a.png' }],
+      courses: [{ id: 'BV1GJ411x7h7', name: '课', categoryId: 'math' }]
+    }
+  }));
+  assert.equal(imported.library.teachers[0].categoryId, 'math');
+  assert.equal(imported.library.teachers[0].avatar, '');
+  assert.equal(imported.library.courseCategories.length, 1);
+  assert.equal(imported.library.courses[0].categoryId, imported.library.courseCategories[0].id);
+  assert.ok(imported.library.categoryOrder.length >= 2);
+});
 test('editing changes only name/category and cannot revive a deleted favorite', () => {
   let state = Library.normalize();
   state = add(state, { type: 'category.add', kind: 'course', id: 'math', name: '数学' });

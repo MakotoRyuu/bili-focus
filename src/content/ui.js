@@ -10,10 +10,20 @@
   function field(form, title, input) {
     const label = el('label', title); input.setAttribute('aria-label', title); label.append(input); form.append(label); return input;
   }
-  function notice(message) {
+  let statusTimer = 0;
+  function notice(message, action) {
     let node = document.querySelector('#study-status');
     if (!node) { node = el('p', '', 'study-status'); node.id = 'study-status'; node.setAttribute('role', 'status'); document.body.append(node); }
-    node.textContent = message;
+    node.replaceChildren(document.createTextNode(message));
+    if (action) {
+      const trigger = button(action.text, async () => {
+        clearTimeout(statusTimer); node.remove();
+        try { await action.run(); } catch (failure) { notice(failure.message); }
+      }, 'study-status-action');
+      node.append(trigger);
+    }
+    clearTimeout(statusTimer);
+    statusTimer = setTimeout(() => node.remove(), action ? 6000 : 4000);
   }
   function dialog(title, build, submitText = '保存') {
     if (document.querySelector('.study-dialog')) return;
@@ -80,7 +90,7 @@
     }
     return wrap;
   }
-  function create({ getState, mutate, metadata, getAppearance, saveAppearance }) {
+  function create({ getState, mutate, metadata, getAppearance, saveAppearance, replace }) {
     const labels = { teacher: '老师', course: '课程' };
     let categoryKind = 'course', resourceKind = 'course';
     function addControl(title, selected, choose, action, style) {
@@ -143,6 +153,27 @@
         return () => mutate({ type: 'item.edit', kind, id: item.id, name: name.value, categoryId: category.value });
       }, '保存修改');
     }
+    function exportBackup() {
+      const data = Library.exportData(getState(), getAppearance());
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }));
+      const link = el('a'); link.href = url; link.download = `bili-focus-${data.exportedAt.slice(0, 10)}.json`;
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+      notice(`已导出 ${data.library.teachers.length} 位老师、${data.library.courses.length} 门课程。`);
+    }
+    function importBackup() {
+      dialog('导入备份', form => {
+        form.append(el('p', '导入将完全替换当前的老师、课程、分类和观看进度，并应用备份中的外观设置，此操作无法撤销。建议先导出当前收藏。', 'study-help'));
+        const file = el('input'); file.type = 'file'; file.accept = '.json,application/json'; file.required = true;
+        field(form, '备份文件（JSON）', file);
+        return async () => {
+          const chosen = file.files?.[0];
+          if (!chosen) throw new Error('请选择备份文件。');
+          const imported = await replace(await chosen.text());
+          notice(`已导入 ${imported.library.teachers.length} 位老师、${imported.library.courses.length} 门课程。`);
+        };
+      }, '导入并替换');
+    }
     function settings() {
       const wrap = el('div', '', 'study-settings'); const { palette, theme } = getAppearance();
       for (const [key, title, choices, selected] of [
@@ -156,6 +187,7 @@
         select.onchange = async () => { try { await saveAppearance(key, select.value); } catch (e) { select.value = selected; notice(e.message); } };
         const label = el('label', title); label.append(select); wrap.append(label);
       }
+      wrap.append(button('导出', exportBackup), button('导入', importBackup));
       return wrap;
     }
     function card(kind, item) {
@@ -169,7 +201,16 @@
       const unit = classroom ? '课' : 'P';
       const detail = teacher ? '查看投稿与合集' : item.pageCount > 1 ? (item.lastPage ? `上次看到第 ${item.lastPage} ${unit} · 共 ${item.pageCount} ${unit}` : `尚未开始 · 共 ${item.pageCount} ${unit}`) : '打开课程';
       link.append(el('span', detail, 'study-card-detail'));
-      const remove = button('移除', async () => { try { await mutate({ type: 'item.remove', kind, id: item.id }); } catch (e) { notice(e.message); } }, 'study-remove');
+      const remove = button('移除', async () => {
+        const snapshot = structuredClone(item);
+        try {
+          await mutate({ type: 'item.remove', kind, id: item.id });
+          notice(`已移除${labels[kind]}「${item.name}」`, { text: '撤销', run: async () => {
+            await mutate({ type: 'item.save', kind, item: snapshot });
+            notice(`已恢复「${snapshot.name}」`);
+          } });
+        } catch (e) { notice(e.message); }
+      }, 'study-remove');
       const edit = button('⚙', () => editItem(kind, item), 'study-edit'); edit.setAttribute('aria-label', `编辑${labels[kind]} ${item.name}`); edit.title = '编辑名称和分类';
       remove.setAttribute('aria-label', `移除${labels[kind]} ${item.name}`); node.append(link, edit, remove); return node;
     }

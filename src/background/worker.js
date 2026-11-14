@@ -89,6 +89,11 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   }) : transaction(async () => {
     const state = await readLibrary();
     if (message.type === 'library.read') return state;
+    if (message.type === 'library.import') {
+      const imported = Library.importData(message.backup);
+      await chrome.storage.local.set({ library: imported.library });
+      return imported;
+    }
     if (message.type !== 'library.mutate') throw new Error('不支持的请求。');
     const action = { ...message.action };
     if (action.type === 'category.add') action.id = crypto.randomUUID();

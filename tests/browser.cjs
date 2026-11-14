@@ -2,7 +2,7 @@
 const { chromium } = require('playwright');
 const fs = require('node:fs'); const path = require('node:path'); const vm = require('node:vm'); const assert = require('node:assert/strict'); const { webcrypto } = require('node:crypto');
 const root = path.join(__dirname, '..'); const manifest = require('../manifest.json');
-let data = { teachers: [{ id: '7', name: '原有昵称' }], palette: 'blue', theme: 'light' }, messageHandler, browser, context, networkFails = false, failNextLibraryRead = false;
+let data = { teachers: [{ id: '7', name: '原有昵称' }], palette: 'blue', theme: 'light' }, messageHandler, browser, context, networkFails = false, failNextLibraryRead = false, videoPages = 5;
 const clone = value => structuredClone(value);
 async function get(keys) {
   if (Array.isArray(keys)) return Object.fromEntries(keys.filter(key => key in data).map(key => [key, clone(data[key])]));
@@ -21,7 +21,7 @@ const worker = vm.createContext({ console, structuredClone, URL, AbortSignal, cr
     return { ok: true, json: async () => ({ code: 0, data: url.includes('/card?') ? { card: { name: '真实账号名', face: 'https://i0.hdslb.com/avatar.png' } } : url.includes('/pugv/view/web/season?') ? {
       season_id: 4372, title: '测试课堂课程', cover: 'https://archive.biliimg.com/cheese.jpg', ep_count: 1,
       episodes: [{ id: 172445, index: 1 }, { id: 172532, index: 2 }]
-    } : { bvid: 'BV1GJ411x7h7', aid: 1234, title: '测试多 P 课程', pic: 'https://i0.hdslb.com/cover.png', pages: Array(5).fill({}) } }) };
+    } : { bvid: 'BV1GJ411x7h7', aid: 1234, title: '测试多 P 课程', pic: 'https://i0.hdslb.com/cover.png', pages: Array(videoPages).fill({}) } }) };
   }
 });
 worker.importScripts = (...files) => files.forEach(file => vm.runInContext(fs.readFileSync(path.resolve(root, 'src/background', file), 'utf8'), worker));
@@ -62,7 +62,7 @@ async function assertHomePlacement(page) {
   assert.ok(layout.gap >= 0 && layout.gap < 100, `library sits too far below the header: ${layout.gap}px`);
 }
 async function main() {
-  browser = await chromium.launch({ channel: 'chrome', headless: true }); context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
+  browser = await chromium.launch({ channel: 'chrome', headless: true }); context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, acceptDownloads: true });
   await context.exposeFunction('__send', send); await context.exposeFunction('__get', get); await context.exposeFunction('__set', set);
   await context.addInitScript(() => {
     const listeners = []; window.__notify = changes => listeners.forEach(fn => fn(changes, 'local'));
@@ -190,6 +190,23 @@ async function main() {
   await page.getByRole('button',{name:'保存修改',exact:true}).click();
   await page.getByText('新课程名',{exact:true}).waitFor(); assert.match(await page.locator('.study-course .study-card-detail').innerText(), /第 3 P/);
   assert.equal(await page.locator('.study-course img').count(),1);
+  // A course that gains new pages still records progress on them; the page count refreshes once from metadata.
+  videoPages = 7;
+  const grownVideoPage = await open('https://www.bilibili.com/video/BV1GJ411x7h7/?p=6');
+  await grownVideoPage.evaluate(() => { const video = document.querySelector('video'); Object.defineProperties(video, { paused: { value: false }, currentTime: { value: 3 } }); video.dispatchEvent(new Event('timeupdate')); });
+  await page.waitForFunction(() => document.querySelector('.study-course .study-card-detail')?.textContent.includes('第 6 P'));
+  assert.match(await page.locator('.study-course .study-card-detail').innerText(), /共 7 P/);
+  assert.equal(data.library.courses.find(item => item.id === 'BV1GJ411x7h7').pageCount, 7);
+  // Removing a card offers undo, which restores the watch progress; notices dismiss themselves.
+  await page.locator('.study-course .study-remove').click();
+  await page.waitForFunction(() => !document.querySelector('.study-course'));
+  const undoNotice = page.locator('#study-status');
+  await undoNotice.waitFor();
+  await undoNotice.getByRole('button', { name: '撤销' }).click();
+  await page.waitForFunction(() => document.querySelector('.study-course .study-card-detail')?.textContent.includes('第 6 P'));
+  assert.equal(await page.locator('.study-course').count(), 1);
+  await page.evaluate(() => FocusUI.notice('测试提示'));
+  await page.waitForFunction(() => !document.querySelector('#study-status'), null, { timeout: 7000 });
   // Move the teacher back so category cascade below continues exercising deletion.
   await page.locator('.study-teacher').filter({hasText:'修改后的昵称'}).locator('.study-edit').click();
   await page.getByLabel('分类',{exact:true}).selectOption({label:'数学'}); await page.getByRole('button',{name:'保存修改',exact:true}).click();
@@ -280,10 +297,54 @@ async function main() {
   const restoredHome = await open('https://www.bilibili.com/');
   await restoredHome.waitForFunction(() => document.querySelector('.study-course img[src="https://archive.biliimg.com/cheese.jpg"]'));
   assert.equal(data.library.courses.find(item => item.id === 'ss4372').pageCount, 2);
+  // Backup export downloads the full library; import validates and replaces it, applying saved appearance.
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: '导出', exact: true }).click()
+  ]);
+  const exported = JSON.parse(fs.readFileSync(await download.path(), 'utf8'));
+  assert.equal(exported.app, 'bili-focus');
+  assert.equal(exported.library.teachers.length, 3);
+  assert.ok(exported.library.courses.some(item => item.name === '新课程名'));
+  assert.equal(exported.preferences.palette, data.palette);
+  assert.equal(exported.preferences.theme, data.theme);
+  await page.getByRole('button', { name: '导入', exact: true }).click();
+  const importDialog = page.getByRole('dialog', { name: '导入备份' });
+  await importDialog.locator('input[type=file]').setInputFiles({ name: 'backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({
+    preferences: { palette: 'green', theme: 'light' },
+    library: {
+      teacherCategories: [{ id: 't1', name: '导入分类' }], courseCategories: [{ id: 'c1', name: '导入课程' }],
+      categoryOrder: [{ kind: 'course', id: 'c1' }, { kind: 'teacher', id: 't1' }],
+      teachers: [{ id: '555', name: '导入老师', categoryId: 't1', avatar: '' }],
+      courses: [{ id: 'BV1GJ411x7h7', aid: 1234, name: '导入的课程', categoryId: 'c1', pageCount: 3, lastPage: 2, cover: '' }]
+    }
+  })) });
+  await importDialog.getByRole('button', { name: '导入并替换' }).click();
+  await page.locator('.study-teacher').filter({ hasText: '导入老师' }).waitFor();
+  assert.equal(await page.locator('.study-teacher').count(), 1);
+  assert.equal(await page.getByText('新课程名', { exact: true }).count(), 0);
+  assert.match(await page.locator('.study-course .study-card-detail').innerText(), /第 2 P/);
+  assert.equal(data.library.teachers.length, 1);
+  assert.equal(data.library.courses.length, 1);
+  assert.equal(data.library.courses[0].lastPage, 2);
+  assert.equal(data.palette, 'green');
+  // Reject a malformed backup without touching the current library.
+  await page.getByRole('button', { name: '导入', exact: true }).click();
+  await importDialog.locator('input[type=file]').setInputFiles({ name: 'bad.json', mimeType: 'application/json', buffer: Buffer.from('{"foo":1}') });
+  await importDialog.getByRole('button', { name: '导入并替换' }).click();
+  await page.waitForFunction(() => document.querySelector('.study-form-error')?.textContent.length > 0);
+  assert.equal(data.library.teachers[0].id, '555');
+  await importDialog.getByRole('button', { name: '取消', exact: true }).click();
   assert.equal(await page.getByRole('button', { name: '切换到正常 B站模式' }).count(), 1);
   await page.getByRole('button', { name: '切换到正常 B站模式' }).click();
   const exitDialog = page.getByRole('dialog', { name: '退出专注模式' });
   await exitDialog.waitFor();
+  // B站 pages with a global reset (dialog{margin:0}) must not break dialog centering.
+  await page.addStyleTag({ content: 'dialog{margin:0!important;padding:0!important}' });
+  const dialogBox = await exitDialog.boundingBox();
+  const view = page.viewportSize();
+  assert.ok(Math.abs(dialogBox.x + dialogBox.width / 2 - view.width / 2) < 2, `dialog centered horizontally: ${JSON.stringify(dialogBox)}`);
+  assert.ok(Math.abs(dialogBox.y + dialogBox.height / 2 - view.height / 2) < 2, `dialog centered vertically: ${JSON.stringify(dialogBox)}`);
   const exitButton = exitDialog.getByRole('button', { name: '退出专注模式' });
   assert.equal(await exitButton.isDisabled(), true);
   await exitDialog.getByLabel('我知道为什么退出专注模式').check();
@@ -323,6 +384,6 @@ async function main() {
   for (const file of manifest.content_scripts[0].css) await page.addStyleTag({ path: path.join(root, file) });
   await assertModeButtonStyle();
   assert.equal(data.focusMode, true);
-  console.log('Browser integration passed: migration, header/menu, category invariants/cascade, teacher toggle/artwork, manual courses/cover, playback P, failure handling, concurrent writes and cross-tab sync.');
+  console.log('Browser integration passed: migration, header/menu, category invariants/cascade, teacher toggle/artwork, manual courses/cover, playback P (incl. grown page counts), remove undo, backup export/import, dialog centering, failure handling, concurrent writes and cross-tab sync.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await browser?.close(); });

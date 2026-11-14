@@ -87,9 +87,10 @@
       if (kind === 'teacher') saved.avatar = imageUrl(item.avatar) || previous?.avatar || '';
       else {
         saved.cover = imageUrl(item.cover) || previous?.cover || '';
-        saved.lastPage = previous?.lastPage || null;
-        saved.lastEpisodeId = previous?.lastEpisodeId || null;
         saved.pageCount = Math.max(1, Number(item.pageCount) || previous?.pageCount || 1);
+        // Accept payload progress only when nothing is stored (undo restore); existing progress always wins.
+        saved.lastPage = previous?.lastPage || (Number.isSafeInteger(item.lastPage) && item.lastPage >= 1 && item.lastPage <= saved.pageCount ? item.lastPage : null);
+        saved.lastEpisodeId = previous?.lastEpisodeId || (/^ss[1-9]\d*$/.test(String(item.id)) && /^[1-9]\d*$/.test(String(item.lastEpisodeId || '')) ? String(item.lastEpisodeId) : null);
       }
       state[items] = state[items].filter(entry => entry !== previous);
       state[items].push(saved);
@@ -122,5 +123,30 @@
     } else throw new Error('不支持的操作。');
     return state;
   }
-  globalThis.Library = { normalize, mutate, courseUrl, imageUrl };
+  const PALETTES = ['white', 'blue', 'pink', 'black', 'green'], THEMES = ['system', 'light', 'dark'];
+  function exportData(state, preferences = {}) {
+    const data = { app: 'bili-focus', version: 1, exportedAt: new Date().toISOString(), library: normalize({ library: state }) };
+    const prefs = {};
+    if (PALETTES.includes(preferences.palette)) prefs.palette = preferences.palette;
+    if (THEMES.includes(preferences.theme)) prefs.theme = preferences.theme;
+    if (Object.keys(prefs).length) data.preferences = prefs;
+    return data;
+  }
+  function importData(value) {
+    let parsed = value;
+    if (typeof value === 'string') { try { parsed = JSON.parse(value); } catch { throw new Error('备份文件不是有效的 JSON。'); } }
+    const candidate = parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+      ? (parsed.library && typeof parsed.library === 'object' && !Array.isArray(parsed.library) ? parsed.library : parsed)
+      : null;
+    if (!candidate || ['teacherCategories', 'courseCategories', 'teachers', 'courses', 'categoryOrder'].every(key => !Array.isArray(candidate[key]))) {
+      throw new Error('备份文件格式不正确，未找到收藏数据。');
+    }
+    const preferences = {};
+    if (parsed !== candidate && parsed.preferences && typeof parsed.preferences === 'object') {
+      if (PALETTES.includes(parsed.preferences.palette)) preferences.palette = parsed.preferences.palette;
+      if (THEMES.includes(parsed.preferences.theme)) preferences.theme = parsed.preferences.theme;
+    }
+    return { library: normalize({ library: candidate }), preferences };
+  }
+  globalThis.Library = { normalize, mutate, courseUrl, imageUrl, exportData, importData };
 })();
