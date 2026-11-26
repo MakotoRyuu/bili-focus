@@ -1,13 +1,39 @@
 (() => {
   const home = 'https://www.bilibili.com/';
+  // An exit confirmed on a page whose script an extension update had already cut off can no
+  // longer reach the extension; the fresh page completes the exit the user confirmed.
+  try {
+    if (sessionStorage.getItem('study-exit-intent') === '1') {
+      sessionStorage.removeItem('study-exit-intent');
+      chrome.storage.local.set({ focusMode: false }).catch(() => {});
+    }
+  } catch {}
   let state = Library.normalize(), loaded = false, lastUrl = '', mounted = null;
   let palette = 'blue', appearance = 'system', focusMode = true, modeReady = false;
   const avatarAttempts = new Set();
   const classroomCoverAttempts = new Set();
   let lastProgress = '', progressBusy = false;
   const skippedClassroomEpisodes = new Set();
+  // A page opened before an extension update keeps its old script, which Chrome cuts off from
+  // the extension. No retry can reach it again, so recover by reloading the page.
+  function reloadForUpdate(error) {
+    if (!/Extension context invalidated/.test(error?.message || '')) return false;
+    FocusUI.notice('插件已更新，正在刷新页面…');
+    setTimeout(() => location.reload(), 2000);
+    return true;
+  }
   async function rpc(type, payload = {}) {
-    const response = await chrome.runtime.sendMessage({ channel: 'bili-focus', type, ...payload });
+    let response;
+    try {
+      response = await chrome.runtime.sendMessage({ channel: 'bili-focus', type, ...payload });
+    } catch (error) {
+      if (!reloadForUpdate(error)) throw new Error('插件连接已更新，请刷新页面后重试。');
+      // Remember a confirmed exit so the reloaded page can complete it.
+      if (type === 'mode.set' && payload.focusMode === false) {
+        try { sessionStorage.setItem('study-exit-intent', '1'); } catch {}
+      }
+      throw new Error('插件已更新，页面即将自动刷新。');
+    }
     if (!response?.ok) throw new Error(response?.error || '插件连接已更新，请刷新页面后重试。');
     return response.data;
   }
@@ -27,7 +53,13 @@
       refresh(); return imported;
     },
     getAppearance: () => ({ palette, theme: appearance }),
-    saveAppearance: (key, value) => chrome.storage.local.set({ [key]: value })
+    saveAppearance: async (key, value) => {
+      try { await chrome.storage.local.set({ [key]: value }); }
+      catch (error) {
+        if (reloadForUpdate(error)) throw new Error('插件已更新，页面即将自动刷新。');
+        throw error;
+      }
+    }
   });
   function applyAppearance() {
     if (!document.documentElement) return;
@@ -197,7 +229,7 @@
     }
     applyAppearance(); update();
   }).catch(error => {
-    const show = () => FocusUI.notice(error.message);
+    const show = () => FocusUI.notice(reloadForUpdate(error) ? '插件已更新，页面即将自动刷新。' : error.message);
     if (document.body) show(); else document.addEventListener('DOMContentLoaded', show, { once: true });
   });
   update(); document.addEventListener('DOMContentLoaded', update, { once: true });

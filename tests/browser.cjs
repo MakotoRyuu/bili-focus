@@ -2,7 +2,7 @@
 const { chromium } = require('playwright');
 const fs = require('node:fs'); const path = require('node:path'); const vm = require('node:vm'); const assert = require('node:assert/strict'); const { webcrypto } = require('node:crypto');
 const root = path.join(__dirname, '..'); const manifest = require('../manifest.json');
-let data = { teachers: [{ id: '7', name: '原有昵称' }], palette: 'blue', theme: 'light' }, messageHandler, browser, context, networkFails = false, failNextLibraryRead = false, videoPages = 5;
+let data = { teachers: [{ id: '7', name: '原有昵称' }], palette: 'blue', theme: 'light' }, messageHandler, browser, context, networkFails = false, failNextLibraryRead = false, contextInvalidated = false, videoPages = 5;
 const clone = value => structuredClone(value);
 async function get(keys) {
   if (Array.isArray(keys)) return Object.fromEntries(keys.filter(key => key in data).map(key => [key, clone(data[key])]));
@@ -27,6 +27,7 @@ const worker = vm.createContext({ console, structuredClone, URL, AbortSignal, cr
 worker.importScripts = (...files) => files.forEach(file => vm.runInContext(fs.readFileSync(path.resolve(root, 'src/background', file), 'utf8'), worker));
 vm.runInContext(fs.readFileSync(path.join(root, manifest.background.service_worker), 'utf8'), worker);
 const send = message => {
+  if (contextInvalidated) return Promise.reject(new Error('Extension context invalidated'));
   if (message.type === 'library.read' && failNextLibraryRead) {
     failNextLibraryRead = false;
     return Promise.resolve({ ok: false, error: 'temporary worker failure' });
@@ -408,6 +409,19 @@ async function main() {
   for (const file of manifest.content_scripts[0].css) await page.addStyleTag({ path: path.join(root, file) });
   await assertModeButtonStyle();
   assert.equal(data.focusMode, true);
-  console.log('Browser integration passed: migration, header/menu, category invariants/cascade, teacher toggle/artwork, manual courses/cover, playback P (incl. grown page counts), remove undo, backup export/import, dialog centering, separated home search, failure handling, concurrent writes and cross-tab sync.');
+  // After an extension update, the open page's script is cut off from the extension. A confirmed
+  // exit must still complete: a friendly error, an automatic reload, and the exit finished fresh.
+  contextInvalidated = true;
+  await page.getByRole('button', { name: '切换到正常 B站模式' }).click();
+  const staleDialog = page.getByRole('dialog', { name: '退出专注模式' });
+  await staleDialog.waitFor();
+  for (const text of ['我知道为什么退出专注模式', '我知道什么时候回来', '我知道我还能做什么']) await staleDialog.getByLabel(text).check();
+  await staleDialog.getByRole('button', { name: '退出专注模式' }).click();
+  await staleDialog.locator('.study-form-error').filter({ hasText: '插件已更新，页面即将自动刷新。' }).waitFor();
+  await page.getByRole('button', { name: '切换到专注模式' }).waitFor({ timeout: 15000 });
+  contextInvalidated = false;
+  assert.equal(data.focusMode, false);
+  assert.equal(await page.locator('.study-home').count(), 0);
+  console.log('Browser integration passed: migration, header/menu, category invariants/cascade, teacher toggle/artwork, manual courses/cover, playback P (incl. grown page counts), remove undo, backup export/import, dialog centering, separated home search, failure handling, concurrent writes, cross-tab sync and post-update exit recovery.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await browser?.close(); });
