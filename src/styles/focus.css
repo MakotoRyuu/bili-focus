@@ -3,6 +3,8 @@ html[data-study-page=home] :is(.bili-feed4-layout,.feed2,.recommended-container_
 html[data-study-page] :is(.ad-report,.ad-floor-exp,.slide-ad-exp,.pop-live-small-mode,.desktop-download-tip,.palette-button-wrap,.vip-entry,.vip-wrap,.right-entry-item--upload,.upload-buttom,.header-upload-entry){display:none!important}
 html[data-study-page] :is(.left-entry,.right-entry,.nav-con) a:is([href*="live.bilibili.com"],[href*="t.bilibili.com"],[href*="/v/popular"],[href*="/bangumi"],[href*="game.bilibili.com"],[href*="mall.bilibili.com"],[href*="message.bilibili.com"],[href*="/download"],[href*="member.bilibili.com"]){display:none!important}
 html[data-study-page] :is(.nav-search-panel,.search-panel,.search-suggest,.trending,.search-trending,.search-history){display:none!important}
+/* Search moves out of the header into the centered homepage box; hide native header search everywhere. */
+html[data-study-page] :is(.center-search-container,.nav-search-container){display:none!important}
 html[data-study-page=home] .bili-header{min-height:64px!important;height:64px!important;background:var(--study-panel)!important}
 html[data-study-page=home] .bili-header__bar{background:var(--study-panel)!important;color:var(--study-text)!important;box-shadow:0 2px 4px #00000008!important}
 html[data-study-page=home] .bili-header__bar :is(.default-entry,.right-entry__outside,.right-entry__outside .right-entry-text){color:var(--study-text)!important;text-shadow:none!important}
@@ -21,33 +23,31 @@ html[data-study-page=cheese] :is(.archive-comment-box,.comment-tab,.player-danma
 html[data-study-page=cheese] :is(.bpx-player-row-dm-wrap,.bpx-player-dm-container){visibility:hidden!important;pointer-events:none!important}
 
 /* Current native header: keep its home entry and avatar, remove entertainment shortcuts. */
-html[data-study-page] .left-entry-main > :not(.home-page-entry),
+html[data-study-page] .left-entry-main > :not(.home-page-entry):not(.study-mode-toggle),
 html[data-study-page] .right-entry__main > :not([class*="header-avatar"]),
 html[data-study-page] :is(.header-upload-entry,.upload-entry,.upload-btn,.login-panel-popover){display:none!important}
 html[data-study-page=home] .bili-header__bar :is(.left-entry__item-trigger,.right-entry__item-trigger,.trigger-text,.trigger-icon){color:var(--study-text)!important;text-shadow:none!important}
 html[data-study-page=home] .bili-feed4{background:var(--study-bg)!important;min-height:100vh}
 
 
-/* Original search centered, text-only account controls aligned to the right. */
-.center-search-container:has(> .study-mode-toggle),.nav-search-container:has(> .study-mode-toggle){display:flex!important;align-items:center;gap:4px}
-.center-search-container > :not(.study-mode-toggle),.nav-search-container > :not(.study-mode-toggle){min-width:0;flex:1}
-.study-mode-toggle{flex:none;border:1px solid #d8dce0!important;border-radius:6px;background:#fff!important;color:#18191c!important;padding:8px 10px;font:inherit;font-size:12px;line-height:20px;white-space:nowrap;cursor:pointer}
+/* Mode toggle sits next to the TV icon on the left; account controls stay on the right.
+   The gap is forced so Bilibili's header resets cannot glue the button to the icon. */
+.study-mode-toggle{flex:none;margin:0!important;margin-inline-start:12px!important;align-self:center;border:1px solid #d8dce0!important;border-radius:6px;background:#fff!important;color:#18191c!important;padding:8px 10px!important;font:inherit;font-size:12px;line-height:20px;white-space:nowrap;cursor:pointer}
 .study-mode-toggle:hover{border-color:#18191c!important;background:#fff!important;color:#18191c!important}
 .study-mode-toggle:focus-visible{outline:2px solid var(--study-accent,#00aeec);outline-offset:2px}
-html[data-study-page] .study-native-header{display:grid!important;grid-template-columns:minmax(90px,1fr) minmax(200px,500px) minmax(180px,1fr)!important;gap:0 24px!important;align-items:center!important}
+html[data-study-page] .study-native-header{display:grid!important;grid-template-columns:minmax(90px,1fr) max-content!important;gap:0 24px!important;align-items:center!important}
 html[data-study-page] .study-native-header .left-entry{grid-column:1;width:auto!important;min-width:0!important}
-html[data-study-page] .study-native-header :is(.center-search-container,.nav-search-container){grid-column:2;width:100%!important;min-width:0!important;margin:0!important}
-html[data-study-page] .study-native-header .right-entry{grid-column:3;width:auto!important;min-width:0!important;margin:0!important;padding:0!important;justify-self:end!important}
+html[data-study-page] .study-native-header .right-entry{grid-column:2;width:auto!important;min-width:0!important;margin:0!important;padding:0!important;justify-self:end!important}
 html[data-study-page] .study-native-header .right-entry__main{min-width:0!important}
 html[data-study-page] .study-native-header .home-page-entry:not(.study-home-entry){display:none!important}
-.study-home-entry{display:inline-flex!important;align-items:center;color:var(--study-accent)!important;text-decoration:none!important;padding:8px 0}
+.study-home-entry{display:inline-flex!important;align-items:center;color:var(--study-accent)!important;text-decoration:none!important;padding:8px 0!important;flex:none}
 #study-home-fallback{position:fixed;left:24px;top:8px;z-index:10000;background:var(--study-panel);padding:8px 12px;border-radius:6px}
 html[data-study-page] .study-native-account-source{position:absolute!important;width:1px!important;height:1px!important;overflow:hidden!important;clip-path:inset(100%)!important;visibility:hidden!important;pointer-events:none!important}
 html[data-study-page] .right-entry__main > .study-account-inline,.study-account-inline{display:flex!important;align-items:center;gap:24px;color:var(--study-text);font-size:14px;white-space:nowrap}
 .study-account-name{max-width:160px;overflow:hidden;text-overflow:ellipsis;cursor:default}
 .study-account-inline button{border:0;background:transparent;color:var(--study-text);padding:8px 0;font:inherit;cursor:pointer}.study-account-inline button:disabled{opacity:.5;cursor:wait}
 .study-account-inline button:focus-visible{outline:2px solid var(--study-accent);outline-offset:4px}
-@media(max-width:800px){html[data-study-page] .study-native-header{grid-template-columns:40px minmax(100px,1fr) max-content!important;gap:0 12px!important;padding-inline:16px!important}.study-account-inline{gap:12px!important}.study-account-name{max-width:80px}}
+@media(max-width:800px){html[data-study-page] .study-native-header{grid-template-columns:minmax(120px,1fr) max-content!important;gap:0 12px!important;padding-inline:16px!important}.study-account-inline{gap:12px!important}.study-account-name{max-width:80px}}
 
 /* Bridge Bilibili's native search tokens to the selected palette. */
 html[data-study-page=search],
@@ -153,11 +153,9 @@ html[data-study-page=search] :is(.vui_tabs--nav-item-active .vui_tabs--nav-link,
 /* Search uses cookie-free requests and has no account controls. */
 html[data-study-page=search] :is(.bili-header__bar,.bili-mini-header__content,.international-header .mini-header) :is(.right-entry,.right-entry__main,.study-account-inline,.header-avatar-unlogin-wrap){display:none!important}
 
-/* Theme the native header search surface as well as the separate results input. */
-html[data-study-page] .study-native-header :is(#nav-searchform,.nav-search-content){background:var(--study-bg)!important;color:var(--study-text)!important;border-color:var(--study-line)!important}
-html[data-study-page] .study-native-header .nav-search-input{background:transparent!important;color:var(--study-text)!important}
-html[data-study-page] .study-native-header .nav-search-input::placeholder{color:var(--study-muted)!important}
-html[data-study-page] .study-native-header :is(.nav-search-btn,.nav-search-submit){color:var(--study-muted)!important}
+/* Theme the native results-page search input. */
+html[data-study-page] :is(.search-input-wrap,.search-form) :is(.search-input-el,.nav-search-input){background:transparent!important;color:var(--study-text)!important}
+html[data-study-page] :is(.search-input-wrap,.search-form) :is(.search-input-el,.nav-search-input)::placeholder{color:var(--study-muted)!important}
 
 /* Remove the hover action from native search result cards. */
 html[data-study-page=search] :is(.bili-watch-later--wrap,.bili-watch-later){display:none!important}

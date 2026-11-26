@@ -37,7 +37,7 @@ const header = `<div class="bili-header"><div class="bili-header__bar"><div clas
 function fixture(url) {
   const searching = url.includes('search.bilibili.com'); const teacher = url.includes('space.bilibili.com'); const video = url.includes('/video/') || url.includes('/cheese/play/');
   const siteHeader = searching || teacher || video ? header : `<div class="bili-feed4">${header}`;
-  return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;font:14px sans-serif}.bili-header__bar{height:64px;padding:0 32px;box-sizing:border-box;display:flex;justify-content:space-between}#nav-searchform{display:flex}input{min-width:0;flex:1}.header-avatar-wrap{position:relative}.avatar-trigger{display:block;width:36px;height:36px}.header-avatar-wrap:hover .avatar-trigger{transform:scale(2) translateY(18px)}.v-popover-content{display:none;position:absolute;top:100%;right:0;width:240px;background:white;box-shadow:0 3px 15px #ccc}.header-avatar-wrap:hover .v-popover-content{display:block}.upinfo{margin:24px}.upinfo-avatar img{width:64px;height:64px}.nickname{display:block}.bili-feed4-layout{height:400px}</style></head><body>${siteHeader}${searching ? '<div class=search-tabs>视频 / 用户</div><div class=video-list><article class=bili-video-card style="--text:#18191c"><h3 class=bili-video-card__info--tit>视频结果</h3></article></div>' : teacher ? '<div class="upinfo header-upinfo"><div class="upinfo-avatar"><img src="https://i0.hdslb.com/avatar.png"></div><div class="upinfo-detail"><div class="nickname">页面老师名</div></div><div class="operations">关注 / 举报 / 加入黑名单</div></div><a href="/123/pugv">课堂</a>' : video ? '<video></video>' : '<div class="bili-feed4-layout">推荐流</div></div>'}</body></html>`;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;font:14px sans-serif}.bili-header__bar{height:64px;padding:0 32px;box-sizing:border-box;display:flex;justify-content:space-between}.left-entry button{margin:0;padding:0}.left-entry .home-page-entry{padding:0}#nav-searchform{display:flex}input{min-width:0;flex:1}.header-avatar-wrap{position:relative}.avatar-trigger{display:block;width:36px;height:36px}.header-avatar-wrap:hover .avatar-trigger{transform:scale(2) translateY(18px)}.v-popover-content{display:none;position:absolute;top:100%;right:0;width:240px;background:white;box-shadow:0 3px 15px #ccc}.header-avatar-wrap:hover .v-popover-content{display:block}.upinfo{margin:24px}.upinfo-avatar img{width:64px;height:64px}.nickname{display:block}.bili-feed4-layout{height:400px}</style></head><body>${siteHeader}${searching ? '<div class=search-tabs>视频 / 用户</div><div class=video-list><article class=bili-video-card style="--text:#18191c"><h3 class=bili-video-card__info--tit>视频结果</h3></article></div>' : teacher ? '<div class="upinfo header-upinfo"><div class="upinfo-avatar"><img src="https://i0.hdslb.com/avatar.png"></div><div class="upinfo-detail"><div class="nickname">页面老师名</div></div><div class="operations">关注 / 举报 / 加入黑名单</div></div><a href="/123/pugv">课堂</a>' : video ? '<video></video>' : '<div class="bili-feed4-layout">推荐流</div></div>'}</body></html>`;
 }
 async function open(url) {
   const page = await context.newPage(); await page.goto(url);
@@ -78,19 +78,25 @@ async function main() {
   await page.waitForFunction(() => document.querySelector('.bili-header')?.nextElementSibling?.id === 'study-home');
   await assertHomePlacement(page);
   async function assertModeButtonStyle() {
-    const layout = await page.locator('.center-search-container').evaluate(search => {
-      const button = search.querySelector('.study-mode-toggle');
-      const form = search.querySelector('#nav-searchform');
-      const bounds = button.getBoundingClientRect(), formBounds = form.getBoundingClientRect();
+    const layout = await page.locator('.bili-header__bar').evaluate(header => {
+      const button = header.querySelector('.study-mode-toggle');
+      if (!button) return { hasButton: false };
+      const icon = header.querySelector('.study-home-entry');
+      const bounds = button.getBoundingClientRect();
       const style = getComputedStyle(button);
-      return { first: search.firstElementChild === button, gap: formBounds.left - bounds.right, background: style.backgroundColor, color: style.color,
-        searchWidth: search.getBoundingClientRect().width, buttonWidth: bounds.width, formWidth: formBounds.width,
-        searchDisplay: getComputedStyle(search).display, formFlex: getComputedStyle(form).flex, formPosition: getComputedStyle(form).position };
+      const iconBox = icon?.getBoundingClientRect();
+      return { hasButton: true, afterIcon: icon ? icon.nextElementSibling === button : true,
+        visible: bounds.width > 0 && bounds.height > 0, background: style.backgroundColor, color: style.color,
+        marginLeft: style.marginLeft, gap: iconBox ? bounds.left - iconBox.right : null };
     });
-    assert.equal(layout.first, true);
-    assert.ok(layout.gap >= 0 && layout.gap <= 6, `mode button layout: ${JSON.stringify(layout)}`);
+    assert.equal(layout.hasButton, true);
+    assert.equal(layout.afterIcon, true, `mode button sits right after the TV icon: ${JSON.stringify(layout)}`);
+    assert.equal(layout.visible, true);
     assert.equal(layout.background, 'rgb(255, 255, 255)');
     assert.equal(layout.color, 'rgb(24, 25, 28)');
+    // Site resets zero header button margins; the toggle must keep its 12px gap regardless.
+    assert.equal(layout.marginLeft, '12px', `forced 12px gap: ${JSON.stringify(layout)}`);
+    if (layout.gap !== null) assert.ok(layout.gap >= 12, `icon and button keep a 12px gap: ${JSON.stringify(layout)}`);
   }
   await assertModeButtonStyle();
   assert.equal(await page.locator('.study-teacher .study-card-name').innerText(), '原有昵称');
@@ -207,6 +213,24 @@ async function main() {
   assert.equal(await page.locator('.study-course').count(), 1);
   await page.evaluate(() => FocusUI.notice('测试提示'));
   await page.waitForFunction(() => !document.querySelector('#study-status'), null, { timeout: 7000 });
+  // Header search is hidden; the centered homepage box submits to a clean search URL
+  // and keeps its text across library-driven re-renders.
+  assert.equal(await page.locator('.center-search-container').isVisible(), false);
+  assert.equal(await page.locator('.study-search-title').isVisible(), true);
+  const searchInput = page.locator('.study-search-form input');
+  await searchInput.waitFor();
+  await searchInput.fill('数学');
+  const editReply = await send({ channel: 'bili-focus', type: 'library.mutate', action: { type: 'item.edit', kind: 'course', id: 'BV1GJ411x7h7', name: '新课程名', categoryId: 'default' } });
+  assert.ok(editReply.ok);
+  assert.equal(await searchInput.inputValue(), '数学');
+  const searchGo = await open('https://www.bilibili.com/');
+  await searchGo.locator('.study-search-form input').waitFor();
+  await searchGo.locator('.study-search-form input').fill('物理');
+  await Promise.all([
+    searchGo.waitForURL('https://search.bilibili.com/video?keyword=%E7%89%A9%E7%90%86'),
+    searchGo.locator('.study-search-go').click()
+  ]);
+  await searchGo.close();
   // Move the teacher back so category cascade below continues exercising deletion.
   await page.locator('.study-teacher').filter({hasText:'修改后的昵称'}).locator('.study-edit').click();
   await page.getByLabel('分类',{exact:true}).selectOption({label:'数学'}); await page.getByRole('button',{name:'保存修改',exact:true}).click();
@@ -384,6 +408,6 @@ async function main() {
   for (const file of manifest.content_scripts[0].css) await page.addStyleTag({ path: path.join(root, file) });
   await assertModeButtonStyle();
   assert.equal(data.focusMode, true);
-  console.log('Browser integration passed: migration, header/menu, category invariants/cascade, teacher toggle/artwork, manual courses/cover, playback P (incl. grown page counts), remove undo, backup export/import, dialog centering, failure handling, concurrent writes and cross-tab sync.');
+  console.log('Browser integration passed: migration, header/menu, category invariants/cascade, teacher toggle/artwork, manual courses/cover, playback P (incl. grown page counts), remove undo, backup export/import, dialog centering, separated home search, failure handling, concurrent writes and cross-tab sync.');
 }
 main().catch(error => { console.error(error); process.exitCode = 1; }).finally(async () => { await browser?.close(); });

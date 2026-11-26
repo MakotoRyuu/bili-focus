@@ -9,6 +9,15 @@
 .study-category-actions{box-sizing:border-box}.study-category-actions button{box-sizing:border-box}
 /* B站部分页面的全局 reset 会清掉浏览器给 <dialog> 的 margin:auto 居中，显式钉住。 */
 .study-dialog{position:fixed!important;inset:0!important;margin:auto!important}
+/* Google-style centered search on the homepage. */
+.study-search{max-width:600px;margin:8px auto 44px;text-align:center}
+.study-search-title{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px;color:var(--study-accent);font-size:22px;font-weight:600}
+.study-search-title svg{width:30px;height:30px}
+.study-search-form{display:flex;align-items:center;gap:8px;box-sizing:border-box;border:1px solid var(--study-line);border-radius:24px;background:var(--study-panel);padding:6px 8px 6px 20px;box-shadow:0 1px 6px #0001}
+.study-search-form:focus-within{border-color:var(--study-accent);box-shadow:0 1px 8px #0002}
+.study-search-form input{flex:1;min-width:0;border:0;background:transparent;color:var(--study-text);font:inherit;font-size:15px;padding:8px 0;outline:none}
+.study-search-form input::placeholder{color:var(--study-muted)}
+.study-search-go{border:0;border-radius:16px;background:var(--study-button);color:var(--study-on-button);padding:8px 18px;font:inherit;white-space:nowrap;cursor:pointer}
 .study-status{pointer-events:none}
 .study-status-action{pointer-events:auto;border:1px solid currentColor;border-radius:4px;background:transparent;color:inherit;font:inherit;font-size:12px;margin-left:12px;padding:2px 10px;cursor:pointer}
 .study-settings button{border:1px solid var(--study-line);border-radius:6px;padding:7px 12px;background:var(--study-panel);color:var(--study-text);font:inherit;cursor:pointer}

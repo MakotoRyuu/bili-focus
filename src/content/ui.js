@@ -93,6 +93,21 @@
   function create({ getState, mutate, metadata, getAppearance, saveAppearance, replace }) {
     const labels = { teacher: '老师', course: '课程' };
     let categoryKind = 'course', resourceKind = 'course';
+    // Google-style home search. The node is created once and re-appended on each render,
+    // so text being typed survives re-renders triggered by library changes.
+    const searchHome = (() => {
+      const wrap = el('div', '', 'study-search');
+      const title = el('div', '', 'study-search-title');
+      title.append(FocusHeader.tvIcon(), el('span', '专注 B站'));
+      const form = el('form', '', 'study-search-form');
+      const input = el('input'); input.type = 'text'; input.placeholder = '搜索视频 / UP 主'; input.setAttribute('aria-label', '搜索视频 / UP 主');
+      input.maxLength = 100; input.autocomplete = 'off'; input.enterKeyHint = 'search';
+      const go = el('button', '搜索', 'study-search-go'); go.type = 'submit';
+      form.append(input, go);
+      form.onsubmit = event => { event.preventDefault(); const value = input.value.trim(); if (value) location.assign(Study.searchUrl(value)); };
+      wrap.append(title, form);
+      return wrap;
+    })();
     function addControl(title, selected, choose, action, style) {
       const control = el('div', '', 'study-add-control');
       const switcher = el('div', '', 'study-add-switch'); switcher.setAttribute('role', 'group'); switcher.setAttribute('aria-label', `${title}类型`);
@@ -220,7 +235,7 @@
       const heading = el('div', '', 'study-heading'); heading.append(el('h2', '我的学习'), settings());
       heading.append(addControl('添加分类', categoryKind, kind => { categoryKind = kind; }, () => addCategory(categoryKind), 'study-secondary'));
       heading.append(addControl('添加资源', resourceKind, kind => { resourceKind = kind; }, () => addItem(resourceKind), 'study-primary'));
-      root.append(heading);
+      root.append(searchHome, heading);
       for (const [index, entry] of state.categoryOrder.entries()) {
           const { kind } = entry;
           const category = state[`${kind}Categories`].find(item => item.id === entry.id);
